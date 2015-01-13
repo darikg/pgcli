@@ -125,7 +125,7 @@ class PgcliSublimePlugin(sublime_plugin.EventListener):
         completions = data['completions']
         _logger.debug('Found completions: %r', completions)
         _logger.debug(completions)
-        #return ['apples', 'ananas']
+
         return [(x['text'], x['display']) for x in completions]
 
 
