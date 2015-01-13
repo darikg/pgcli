@@ -21,6 +21,7 @@ class Server(object):
         self.completer.extend_special_commands(NON_CASE_SENSITIVE_COMMANDS.keys())
 
     def get_completions(self, text, cursor_position):
+            self.completer.reset_completions()
             refresh_completions(self.pgcli.pgexecute, self.completer)
             return self.completer.get_completions(
                 Document(text=text, cursor_position=cursor_position),
