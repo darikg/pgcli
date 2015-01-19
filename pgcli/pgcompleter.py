@@ -69,13 +69,16 @@ class PGCompleter(Completer):
     def escaped_names(self, names):
         return [self.escape_name(name) for name in names]
 
+    def unescaped_names(self, names):
+        return [self.unescape_name(name) for name in names]
+
     def extend_special_commands(self, special_commands):
         # Special commands are not part of all_completions since they can only
         # be at the beginning of a line.
         self.special_commands.extend(special_commands)
 
     def extend_database_names(self, databases):
-        databases = self.escaped_names(databases)
+        databases = self.unescaped_names(databases)
         self.databases.extend(databases)
 
     def extend_keywords(self, additional_keywords):
@@ -147,6 +150,7 @@ class PGCompleter(Completer):
                 tables = suggestion['tables']
                 _logger.debug("Completion column scope: %r", tables)
                 scoped_cols = self.populate_scoped_cols(tables)
+                scoped_cols = self.escaped_names(scoped_cols)
                 cols = self.find_matches(word_before_cursor, scoped_cols)
                 completions.extend(cols)
 
@@ -155,7 +159,8 @@ class PGCompleter(Completer):
                 completions.extend(funcs)
 
             elif suggestion['type'] == 'schema':
-                schemata = self.find_matches(word_before_cursor, self.schemata)
+                schemata = self.escaped_names(self.schemata['schema'])
+                schemata = self.find_matches(word_before_cursor, schemata)
                 completions.extend(schemata)
 
             elif suggestion['type'] == 'table':
@@ -166,7 +171,9 @@ class PGCompleter(Completer):
                 else:
                     tables = meta.table[meta.is_visible]
 
+                tables = self.escaped_names(tables)
                 tables = self.find_matches(word_before_cursor, tables)
+
                 completions.extend(tables)
             elif suggestion['type'] == 'alias':
                 aliases = suggestion['aliases']
