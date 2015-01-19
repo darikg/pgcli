@@ -167,7 +167,8 @@ class PGCompleter(Completer):
                 meta = self.tables
 
                 if suggestion['schema']:
-                    tables = meta.table[meta.schema == suggestion['schema']]
+                    schema = self.unescape_name(suggestion['schema'])
+                    tables = meta.table[meta.schema == schema]
                 else:
                     tables = meta.table[meta.is_visible]
 

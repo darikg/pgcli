@@ -170,6 +170,17 @@ def test_suggested_table_names_with_schema_dot(completer, complete_event):
         Completion(text='products', start_position=0),
         Completion(text='shipments', start_position=0)])
 
+
+
+def test_suggested_table_names_with_double_quoted_schema_dot(completer, complete_event):
+    text = 'SELECT * FROM "custom".'
+    position = len(text)
+    result = completer.get_completions(
+        Document(text=text, cursor_position=position), complete_event)
+    assert set(result) == set([
+        Completion(text='products', start_position=0),
+        Completion(text='shipments', start_position=0)])
+
 def test_suggested_column_names_with_alias(completer, complete_event):
     """
     Suggest column names on table alias and dot
