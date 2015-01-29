@@ -284,3 +284,75 @@ def test_auto_escaped_col_names(completer, complete_event):
         Completion(text='custom_func1', start_position=0),
         Completion(text='custom_func2', start_position=0)] +
         list(map(Completion, completer.functions)))
+
+
+def test_suggest_works_inside_partial_cte(completer, complete_event):
+    text = 'WITH xxx AS (SEL'
+    pos = len(text)
+    result = set(completer.get_completions(
+        Document(text=text, cursor_position=pos), complete_event))
+    assert result == set([Completion(text='SELECT', start_position=-3)])
+
+    text = 'WITH xxx AS (SELECT * FROM '
+    pos = len(text)
+    result = set(completer.get_completions(
+        Document(text=text, cursor_position=pos), complete_event))
+    assert result == set([Completion(text='public', start_position=0),
+        Completion(text='users', start_position=0),
+        Completion(text='"select"', start_position=0),
+        Completion(text='orders', start_position=0)])
+
+def test_suggest_single_cte_and_tables(completer, complete_event):
+    text = 'WITH abc AS (SELECT def FROM ghi) SELECT * FROM '
+    position = len(text)
+    result = set(completer.get_completions(
+        Document(text=text, cursor_position=position), complete_event))
+    assert set(result) == set([Completion(text='public', start_position=0),
+        Completion(text='users', start_position=0),
+        Completion(text='"select"', start_position=0),
+        Completion(text='orders', start_position=0),
+        Completion(text='abc', start_position=0)])
+
+def test_suggest_multiple_ctes_and_tables(completer, complete_event):
+    text = '''WITH abc AS (SELECT def FROM ghi),
+                jkl AS (SELECT mno FROM pqr)
+                SELECT * FROM '''
+    position = len(text)
+    result = set(completer.get_completions(
+        Document(text=text, cursor_position=position), complete_event))
+    assert set(result) == set([Completion(text='public', start_position=0),
+        Completion(text='users', start_position=0),
+        Completion(text='"select"', start_position=0),
+        Completion(text='orders', start_position=0),
+        Completion(text='abc', start_position=0),
+        Completion(text='jkl', start_position=0)])
+
+def test_suggest_columns_from_single_cte(completer, complete_event):
+    text = 'WITH abc AS (SELECT def, ghi AS jkl FROM mnp) SELECT  FROM abc'
+    position = len('WITH abc AS (SELECT def, ghi AS jkl FROM mnp) SELECT ')
+    result = set(completer.get_completions(
+        Document(text=text, cursor_position=position), complete_event))
+    assert set(result) == set([Completion(text='def', start_position=0),
+        Completion(text='jkl', start_position=0)]
+            + list(map(Completion, completer.functions)))
+
+def test_suggest_columns_from_single_cte_dot(completer, complete_event):
+    text = 'WITH abc AS (SELECT def, ghi AS jkl FROM mnp) SELECT abc. FROM abc'
+    position = len('WITH abc AS (SELECT def, ghi AS jkl FROM mnp) SELECT abc.')
+    result = set(completer.get_completions(
+        Document(text=text, cursor_position=position), complete_event))
+    assert set(result) == set([Completion(text='def', start_position=0),
+        Completion(text='jkl', start_position=0)])
+
+def test_suggest_columns_from_aliased_cte_dot(completer, complete_event):
+    text = '''WITH abc AS (SELECT def FROM ghi),
+                jkl AS (SELECT mno FROM pqr)
+                SELECT stu. FROM jkl stu'''
+
+    position = len('''WITH abc AS (SELECT def FROM ghi),
+                jkl AS (SELECT mno FROM pqr)
+                SELECT stu.''')
+
+    result = set(completer.get_completions(
+        Document(text=text, cursor_position=position), complete_event))
+    assert set(result) == set([Completion(text='mno', start_position=0)])

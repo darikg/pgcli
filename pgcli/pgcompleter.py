@@ -3,6 +3,7 @@ import logging
 from prompt_toolkit.completion import Completer, Completion
 from .packages.sqlcompletion import suggest_type
 from .packages.parseutils import last_word
+from .packages.parseutils_ctes import isolate_query_ctes
 from re import compile
 
 
@@ -154,8 +155,13 @@ class PGCompleter(Completer):
         if not smart_completion:
             return self.find_matches(word_before_cursor, self.all_completions)
 
+        # If the query begins with CTE definitions, strip them out so the rest
+        # of the query can refer to them as if they were pre-existing tables
+        full_text, text_before_cursor, ctes = isolate_query_ctes(
+            document.text, document.text_before_cursor)
+
         completions = []
-        suggestions = suggest_type(document.text, document.text_before_cursor)
+        suggestions = suggest_type(full_text, text_before_cursor)
 
         for suggestion in suggestions:
 
@@ -164,7 +170,7 @@ class PGCompleter(Completer):
             if suggestion['type'] == 'column':
                 tables = suggestion['tables']
                 _logger.debug("Completion column scope: %r", tables)
-                scoped_cols = self.populate_scoped_cols(tables)
+                scoped_cols = self.populate_scoped_cols(tables, ctes)
                 cols = self.find_matches(word_before_cursor, scoped_cols)
                 completions.extend(cols)
 
@@ -187,6 +193,11 @@ class PGCompleter(Completer):
             elif suggestion['type'] == 'table':
                 tables = self.populate_schema_objects(
                     suggestion['schema'], 'tables')
+                
+                if not suggestion['schema']:
+                    # CTEs defined in the query
+                    tables.extend(cte.name for cte in ctes)
+                    
                 tables = self.find_matches(word_before_cursor, tables)
                 completions.extend(tables)
 
@@ -205,9 +216,10 @@ class PGCompleter(Completer):
 
         return completions
 
-    def populate_scoped_cols(self, scoped_tbls):
+    def populate_scoped_cols(self, scoped_tbls, ctes):
         """ Find all columns in a set of scoped_tables
         :param scoped_tbls: list of (schema, table, alias) tuples
+        :param ctes: list of TableExpression namedtuples
         :return: list of column names
         """
 
@@ -226,6 +238,13 @@ class PGCompleter(Completer):
                     # Either the schema or table doesn't exist
                     pass
             else:
+                # Reference to a locally defined CTE
+                for cte in ctes:
+                    # If cte has matching alias or matching unaliased name
+                    if (tbl[2] and cte.name == tbl[2]) or cte.name == tbl[1]:
+                        columns.extend(cte.columns)
+
+                # Reference to an unqualfied table
                 for schema in self.search_path:
                     table = self.escape_name(tbl[1])
                     try:
