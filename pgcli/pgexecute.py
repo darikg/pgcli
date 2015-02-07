@@ -4,6 +4,7 @@ import psycopg2.extras
 import psycopg2.extensions as ext
 import sqlparse
 from .packages import pgspecial
+from .packages.function_metadata import FunctionMetadata
 from .encodingutils import unicode2utf8
 
 _logger = logging.getLogger(__name__)
@@ -64,9 +65,10 @@ class PGExecute(object):
         ORDER BY 1, 2, 3'''
 
     functions_query = '''
-        SELECT 	DISTINCT  --multiple dispatch means possible duplicates
-                n.nspname schema_name,
-                p.proname func_name
+        SELECT 	n.nspname schema_name,
+                p.proname func_name,
+                pg_catalog.pg_get_function_arguments(p.oid) arg_list,
+                pg_catalog.pg_get_function_result(p.oid) result
         FROM 	pg_catalog.pg_proc p
                 INNER JOIN pg_catalog.pg_namespace n
                     ON n.oid = p.pronamespace
@@ -198,10 +200,10 @@ class PGExecute(object):
             return [x[0] for x in cur.fetchall()]
 
     def functions(self):
-        """Yields tuples of (schema_name, function_name)"""
+        """Yields FunctionMetadata objects"""
 
         with self.conn.cursor() as cur:
             _logger.debug('Functions Query. sql: %r', self.functions_query)
             cur.execute(self.functions_query)
             for row in cur:
-                yield row
+                yield FunctionMetadata(*row)
