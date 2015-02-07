@@ -1,8 +1,10 @@
 from __future__ import print_function
 import logging
 from prompt_toolkit.completion import Completer, Completion
+from .pglanguagecompleter import PGLanguageCompleter
 from .packages.sqlcompletion import suggest_type
 from .packages.parseutils import last_word
+from .packages.parseutils_funcdefs import is_nonsql_language
 from re import compile
 
 
@@ -47,6 +49,8 @@ class PGCompleter(Completer):
         self.search_path = []
 
         self.all_completions = set(self.keywords + self.functions)
+
+        self.nonsql_completer = PGLanguageCompleter(self)
 
     def escape_name(self, name):
         if name and ((not self.name_pattern.match(name))
@@ -144,7 +148,8 @@ class PGCompleter(Completer):
                     item.startswith(text.lower())):
                 yield Completion(item, -len(text))
 
-    def get_completions(self, document, complete_event, smart_completion=None):
+    def get_completions(self, document, complete_event, smart_completion=None,
+                        nonsql_completion=True):
         word_before_cursor = document.get_word_before_cursor(WORD=True)
         if smart_completion is None:
             smart_completion = self.smart_completion
@@ -153,6 +158,11 @@ class PGCompleter(Completer):
         # 'word_before_cursor'.
         if not smart_completion:
             return self.find_matches(word_before_cursor, self.all_completions)
+
+        # If editing a CREATE FUNCTION comand, delegate to the funcdefcompleter
+        if nonsql_completion and is_nonsql_language(document.text):
+            return self.nonsql_completer.get_completions(document,
+                                                         complete_event)
 
         completions = []
         suggestions = suggest_type(document.text, document.text_before_cursor)
