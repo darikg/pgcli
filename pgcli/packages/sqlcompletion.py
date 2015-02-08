@@ -141,6 +141,23 @@ def suggest_based_on_last_token(token, text_before_cursor, full_text):
         suggestions.extend([{'type': 'table', 'schema': identifier},
                             {'type': 'function', 'schema': identifier}])
 
+        # FUNCTION().<suggestion> or SCHEMA.FUNCTION().<suggestion>
+        if identifier.endswith(')'):
+            func = sqlparse.parse(identifier)[0].tokens[0]
+            try:
+                func_name = func.get_name()
+            except AttributeError:
+                func_name = None
+            try:
+                schema = func.get_parent_name()
+            except AttributeError:
+                schema = []
+
+            if func_name:
+                suggestions.append({'type': 'function_field',
+                                    'function': func_name,
+                                    'schema': schema})
+
         return suggestions
 
     return [{'type': 'keyword'}]
