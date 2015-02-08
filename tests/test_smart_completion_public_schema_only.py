@@ -3,9 +3,11 @@ from prompt_toolkit.completion import Completion
 from prompt_toolkit.document import Document
 
 metadata = {
-                'users': ['id', 'email', 'first_name', 'last_name'],
-                'orders': ['id', 'ordered_date', 'status'],
-                'select': ['id', 'insert', 'ABC']
+                'tables': {
+                    'users': ['id', 'email', 'first_name', 'last_name'],
+                    'orders': ['id', 'ordered_date', 'status'],
+                    'select': ['id', 'insert', 'ABC']},
+                'functions': ['custom_func1', 'custom_func2']
             }
 
 @pytest.fixture
@@ -17,13 +19,16 @@ def completer():
     schemata = ['public']
     tables, columns = [], []
 
-    for table, cols in metadata.items():
+    for table, cols in metadata['tables'].items():
         tables.append(('public', table))
         columns.extend([('public', table, col) for col in cols])
+
+    functions = [('public', func) for func in metadata['functions']]
 
     comp.extend_schemata(schemata)
     comp.extend_tables(tables)
     comp.extend_columns(columns)
+    comp.extend_functions(functions)
     comp.set_search_path(['public'])
 
     return comp
@@ -86,7 +91,9 @@ def test_suggested_column_names_from_visible_table(completer, complete_event):
         Completion(text='id', start_position=0),
         Completion(text='email', start_position=0),
         Completion(text='first_name', start_position=0),
-        Completion(text='last_name', start_position=0)] +
+        Completion(text='last_name', start_position=0),
+        Completion(text='custom_func1', start_position=0),
+        Completion(text='custom_func2', start_position=0)] +
         list(map(Completion, completer.functions)))
 
 def test_suggested_column_names_in_function(completer, complete_event):
@@ -165,7 +172,9 @@ def test_suggested_multiple_column_names(completer, complete_event):
         Completion(text='id', start_position=0),
         Completion(text='email', start_position=0),
         Completion(text='first_name', start_position=0),
-        Completion(text='last_name', start_position=0)] +
+        Completion(text='last_name', start_position=0),
+        Completion(text='custom_func1', start_position=0),
+        Completion(text='custom_func2', start_position=0)] +
         list(map(Completion, completer.functions)))
 
 def test_suggested_multiple_column_names_with_alias(completer, complete_event):
@@ -271,5 +280,7 @@ def test_auto_escaped_col_names(completer, complete_event):
         Completion(text='*', start_position=0),
         Completion(text='id', start_position=0),
         Completion(text='"insert"', start_position=0),
-        Completion(text='"ABC"', start_position=0), ] +
+        Completion(text='"ABC"', start_position=0),
+        Completion(text='custom_func1', start_position=0),
+        Completion(text='custom_func2', start_position=0)] +
         list(map(Completion, completer.functions)))
