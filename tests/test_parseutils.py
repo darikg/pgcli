@@ -82,3 +82,7 @@ def test_join_as_table():
     tables = extract_tables('SELECT * FROM my_table AS m WHERE m.a > 5')
     assert tables == [(None, 'my_table', 'm')]
 
+def test_function_as_table():
+    tables = extract_tables('SELECT * FROM myfunc()')
+    assert tables == [(None, 'my_func', None, True)]
+

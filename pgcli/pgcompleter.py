@@ -211,30 +211,38 @@ class PGCompleter(Completer):
         :return: list of column names
         """
 
+        # Note: scoped columns can come from either tables or functions.
+        # Currently, extract_tables doesn't discriminate between table and
+        # function references, so we look for either. In the case where a table
+        # and function of the same name both exist, return columns from both.
         columns = []
-        metadata = self.dbmetadata['tables']
 
         for tbl in scoped_tbls:
             if tbl[0]:
                 # A fully qualified schema.table reference
-                schema = self.escape_name(tbl[0])
-                table = self.escape_name(tbl[1])
-                try:
-                    # Get columns from the corresponding schema.table
-                    columns.extend(metadata[schema][table])
-                except KeyError:
-                    # Either the schema or table doesn't exist
-                    pass
+                schemas = [self.escape_name(tbl[0])]
             else:
-                for schema in self.search_path:
-                    table = self.escape_name(tbl[1])
+                # An unqualified reference -- search all schemas on the path
+                schemas = self.search_path
+
+            name = self.escape_name(tbl[1])  # table or function name
+
+            for obj_type in ['tables', 'functions']:
+                meta = self.dbmetadata[obj_type]
+                for schema in schemas:
                     try:
-                        columns.extend(metadata[schema][table])
+                        # Get columns from the corresponding table/function
+                        columns.extend(meta[schema][name])
+
+                        # First visible table on the search path should shadow
+                        # all other tables of the same name, so stop searching
                         break
                     except KeyError:
+                        # Either the schema or table doesn't exist
                         pass
 
         return columns
+
 
     def populate_schema_objects(self, schema, obj_type):
         """Returns list of tables or functions for a (optional) schema"""

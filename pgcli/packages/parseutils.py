@@ -101,7 +101,16 @@ def extract_from_part(parsed, stop_at_punctuation=True):
                     break
 
 def extract_table_identifiers(token_stream):
-    """yields tuples of (schema_name, table_name, table_alias)"""
+    """yields tuples of (schema_name, name, alias)"""
+
+    # Postgresql allows functions to be treated like tables. This function
+    # extracts all table-like references from a query. One sqlparse-related
+    # oddity to watch out for is that a bare (i.e., unqualified and unaliased)
+    # function call results in a Function token, which is not an instance of
+    # Identifier (although it may still be returned by
+    # IdentifierList.get_identifier(). On the other hand, an aliased and/or
+    # schema-qualified function call will result in an Identifier token, with
+    # the schema, function and alias tokens grouped together as child tokens.
 
     for item in token_stream:
         if isinstance(item, IdentifierList):
@@ -115,17 +124,13 @@ def extract_table_identifiers(token_stream):
                     continue
                 if real_name:
                     yield (schema_name, real_name, identifier.get_alias())
-        elif isinstance(item, Identifier):
+        elif isinstance(item, Identifier) or isinstance(item, Function):
             real_name = item.get_real_name()
             schema_name = item.get_parent_name()
 
             if real_name:
                 yield (schema_name, real_name, item.get_alias())
-            else:
-                name = item.get_name()
-                yield (None, name, item.get_alias() or name)
-        elif isinstance(item, Function):
-            yield (None, item.get_name(), item.get_name())
+
 
 # extract_tables is inspired from examples in the sqlparse lib.
 def extract_tables(sql):
