@@ -150,7 +150,20 @@ def suggest_based_on_last_token(token, text_before_cursor, full_text, identifier
     if not token:
         return [{'type': 'keyword'}, {'type': 'special'}]
     elif token_v.lower().endswith('('):
+        # Get the penultimate token
         p = sqlparse.parse(text_before_cursor)[0]
+        tok1 = p.token_prev(len(p.tokens) - 1)
+        if tok1 and tok1.value:
+            tok1 = tok1.value.lower()
+            if tok1 == 'from':
+                # subselect
+                return [{'type': 'keyword'}]
+            elif tok1 == 'using':
+                # tbl1 INNER JOIN tbl2 USING (col1, col2)
+                tables = extract_tables(full_text)
+
+                # suggest columns that are present in more than one table
+                return [{'type': 'column', 'tables': tables, 'drop_unique': True}]
         if p.token_first().value.lower() == 'select':
             # If the lparen is preceeded by a space chances are we're about to
             # do a sub-select.

@@ -204,6 +204,15 @@ def test_on_suggests_tables_right_side():
         'select abc.x, bcd.y from abc join bcd on ')
     assert suggestions == [{'type': 'alias', 'aliases': ['abc', 'bcd']}]
 
+
+def test_join_using_suggests_common_columns():
+    text = 'select * from abc inner join def using ('
+    assert suggest_type(text, text) == [
+        {'type': 'column',
+         'tables': [(None, 'abc', None), (None, 'def', None)],
+         'drop_unique': True}]
+
+
 def test_2_statements_2nd_current():
     suggestions = suggest_type('select * from a; select * from ',
                                'select * from a; select * from ')
