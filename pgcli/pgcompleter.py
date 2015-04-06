@@ -4,6 +4,7 @@ from prompt_toolkit.completion import Completer, Completion
 from .packages.sqlcompletion import suggest_type
 from .packages.parseutils import last_word
 from re import compile
+from collections import Counter
 
 
 _logger = logging.getLogger(__name__)
@@ -185,6 +186,15 @@ class PGCompleter(Completer):
                 tables = suggestion['tables']
                 _logger.debug("Completion column scope: %r", tables)
                 scoped_cols = self.populate_scoped_cols(tables)
+
+                if suggestion.get('drop_unique'):
+                    # drop_unique is used for 'tb11 JOIN tbl2 USING (...'
+                    # which should suggest only columns that appear in more than
+                    # one table
+                    scoped_cols = [col for (col, count)
+                                         in Counter(scoped_cols).items()
+                                           if count > 1 and col != '*']
+
                 cols = self.find_matches(word_before_cursor, scoped_cols)
                 completions.extend(cols)
 
