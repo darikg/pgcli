@@ -1,11 +1,7 @@
 import pytest
 from prompt_toolkit.completion import Completion
 from prompt_toolkit.document import Document
-from collections import namedtuple
-
-Function = namedtuple('Function', ['schema_name', 'func_name', 'arg_list',
-                                   'result', 'is_aggregate', 'is_window',
-                                   'is_set_returning'])
+from pgcli.pgexecute import FunctionMetadata
 
 metadata = {
             'tables': {
@@ -20,10 +16,10 @@ metadata = {
                                 'shipments': ['id', 'address', 'user_id']
                             }},
             'functions': [
-                    Function('public', 'func1', '', '', False, False, False),
-                    Function('public', 'func2', '', '', False, False, False),
-                    Function('custom', 'func3', '', '', False, False, False),
-                    Function('custom', 'func4', '', '', False, False, True),
+                    FunctionMetadata('public', 'func1', '', '', False, False, False),
+                    FunctionMetadata('public', 'func2', '', '', False, False, False),
+                    FunctionMetadata('custom', 'func3', '', '', False, False, False),
+                    FunctionMetadata('custom', 'func4', '', '', False, False, True),
                 ]
             }
 

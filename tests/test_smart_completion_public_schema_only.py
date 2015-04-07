@@ -1,11 +1,7 @@
 import pytest
 from prompt_toolkit.completion import Completion
 from prompt_toolkit.document import Document
-from collections import namedtuple
-
-Function = namedtuple('Function', ['schema_name', 'func_name', 'arg_list',
-                                   'result', 'is_aggregate', 'is_window',
-                                   'is_set_returning'])
+from pgcli.pgexecute import FunctionMetadata
 
 metadata = {
                 'tables': {
@@ -45,7 +41,7 @@ def completer():
     comp.extend_columns(columns, kind='views')
 
     # functions
-    functions = [Function('public', func, '', '', False, False, False)
+    functions = [FunctionMetadata('public', func, '', '', False, False, False)
                  for func in metadata['functions']]
     comp.extend_functions(functions)
 

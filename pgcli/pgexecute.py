@@ -3,7 +3,7 @@ import psycopg2
 import psycopg2.extras
 import psycopg2.extensions as ext
 import sqlparse
-from psycopg2.extras import NamedTupleCursor
+from collections import namedtuple
 from .packages import pgspecial
 from .encodingutils import unicode2utf8
 
@@ -22,6 +22,10 @@ ext.register_type(ext.new_type((17,), 'BYTEA_TEXT', psycopg2.STRING))
 # When running a query, make pressing CTRL+C raise a KeyboardInterrupt
 # See http://initd.org/psycopg/articles/2014/07/20/cancelling-postgresql-statements-python/
 ext.set_wait_callback(psycopg2.extras.wait_select)
+
+FunctionMetadata = namedtuple('FunctionMetadata', ['schema_name', 'func_name',
+                              'arg_list', 'result', 'is_aggregate', 'is_window',
+                              'is_set_returning'])
 
 
 def register_json_typecasters(conn, loads_fn):
@@ -109,7 +113,7 @@ class PGExecute(object):
                 p.proname func_name,
                 pg_catalog.pg_get_function_arguments(p.oid) arg_list,
                 pg_catalog.pg_get_function_result(p.oid) result,
-                p.propisagg is_aggregate,
+                p.proisagg is_aggregate,
                 p.proiswindow is_window,
                 p.proretset is_set_returning
         FROM 	pg_catalog.pg_proc p
@@ -298,14 +302,10 @@ class PGExecute(object):
             return [x[0] for x in cur.fetchall()]
 
     def functions(self):
-        """Yields function metadata named tuples objects
+        """Yields function metadata namedtuples"""
 
-        fieldnames are schema_name, func_name, arg_list, result, is_aggregate,
-        is_window, is_set_returning
-        """
-
-        with self.conn.cursor(cursor_factor=NamedTupleCursor) as cur:
+        with self.conn.cursor() as cur:
             _logger.debug('Functions Query. sql: %r', self.functions_query)
             cur.execute(self.functions_query)
             for row in cur:
-                yield row
+                yield FunctionMetadata(*row)
