@@ -1,6 +1,11 @@
 import pytest
 from prompt_toolkit.completion import Completion
 from prompt_toolkit.document import Document
+from collections import namedtuple
+
+Function = namedtuple('Function', ['schema_name', 'func_name', 'arg_list',
+                                   'result', 'is_aggregate', 'is_window',
+                                   'is_set_returning'])
 
 metadata = {
             'tables': {
@@ -14,9 +19,12 @@ metadata = {
                                 'products': ['id', 'product_name', 'price'],
                                 'shipments': ['id', 'address', 'user_id']
                             }},
-            'functions': {
-                'public':   ['func1', 'func2'],
-                'custom':   ['func3', 'func4']}
+            'functions': [
+                    Function('public', 'func1', '', '', False, False, False),
+                    Function('public', 'func2', '', '', False, False, False),
+                    Function('custom', 'func3', '', '', False, False, False),
+                    Function('custom', 'func4', '', '', False, False, True),
+                ]
             }
 
 @pytest.fixture
@@ -34,14 +42,10 @@ def completer():
             tables.append((schema, table))
             columns.extend([(schema, table, col) for col in cols])
 
-    functions = [(schema, func)
-                    for schema, funcs in metadata['functions'].items()
-                    for func in funcs]
-
     comp.extend_schemata(schemata)
     comp.extend_relations(tables, kind='tables')
     comp.extend_columns(columns, kind='tables')
-    comp.extend_functions(functions)
+    comp.extend_functions(metadata['functions'])
     comp.set_search_path(['public'])
 
     return comp

@@ -3,6 +3,7 @@ import psycopg2
 import psycopg2.extras
 import psycopg2.extensions as ext
 import sqlparse
+from psycopg2.extras import NamedTupleCursor
 from .packages import pgspecial
 from .encodingutils import unicode2utf8
 
@@ -104,9 +105,13 @@ class PGExecute(object):
         ORDER BY 1, 2, 3'''
 
     functions_query = '''
-        SELECT 	DISTINCT  --multiple dispatch means possible duplicates
-                n.nspname schema_name,
-                p.proname func_name
+        SELECT 	n.nspname schema_name,
+                p.proname func_name,
+                pg_catalog.pg_get_function_arguments(p.oid) arg_list,
+                pg_catalog.pg_get_function_result(p.oid) result,
+                p.propisagg is_aggregate,
+                p.proiswindow is_window,
+                p.proretset is_set_returning
         FROM 	pg_catalog.pg_proc p
                 INNER JOIN pg_catalog.pg_namespace n
                     ON n.oid = p.pronamespace
@@ -293,9 +298,13 @@ class PGExecute(object):
             return [x[0] for x in cur.fetchall()]
 
     def functions(self):
-        """Yields tuples of (schema_name, function_name)"""
+        """Yields function metadata named tuples objects
 
-        with self.conn.cursor() as cur:
+        fieldnames are schema_name, func_name, arg_list, result, is_aggregate,
+        is_window, is_set_returning
+        """
+
+        with self.conn.cursor(cursor_factor=NamedTupleCursor) as cur:
             _logger.debug('Functions Query. sql: %r', self.functions_query)
             cur.execute(self.functions_query)
             for row in cur:
