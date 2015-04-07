@@ -32,10 +32,6 @@ class PGCompleter(Completer):
             'UPDATE', 'USE', 'USER', 'VALIDATE', 'VALUES', 'VARCHAR',
             'VARCHAR2', 'VIEW', 'WHEN', 'WHENEVER', 'WHERE', 'WITH', ]
 
-    functions = ['AVG', 'COUNT', 'DISTINCT', 'FIRST', 'FORMAT', 'LAST',
-            'LCASE', 'LEN', 'MAX', 'MIN', 'MID', 'NOW', 'ROUND', 'SUM', 'TOP',
-            'UCASE']
-
     def __init__(self, smart_completion=True):
         super(self.__class__, self).__init__()
         self.smart_completion = smart_completion

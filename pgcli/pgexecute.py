@@ -72,8 +72,9 @@ class PGExecute(object):
     schemata_query = '''
         SELECT  nspname
         FROM    pg_catalog.pg_namespace
-        WHERE   nspname !~ '^pg_'
-                AND nspname <> 'information_schema'
+        WHERE   nspname = 'pg_catalog'
+                OR (nspname !~ '^pg_'
+                    AND nspname <> 'information_schema')
         ORDER BY 1 '''
 
     tables_query = '''
@@ -111,8 +112,13 @@ class PGExecute(object):
                 INNER JOIN pg_catalog.pg_namespace n
                     ON n.oid = p.pronamespace
         WHERE 	n.nspname NOT IN ('pg_catalog', 'information_schema')
+                OR (n.nspname = 'pg_catalog' and p.proname = ANY(%s))
         ORDER BY 1, 2'''
 
+    functions_whitelist = [
+        'AVG', 'COUNT', 'DISTINCT', 'FIRST', 'FORMAT', 'LAST',
+        'LCASE', 'LEN', 'MAX', 'MIN', 'MID', 'NOW', 'ROUND', 'SUM', 'TOP',
+        'UCASE']
 
     databases_query = """SELECT d.datname as "Name",
        pg_catalog.pg_get_userbyid(d.datdba) as "Owner",
@@ -221,7 +227,9 @@ class PGExecute(object):
         with self.conn.cursor() as cur:
             _logger.debug('Search path query. sql: %r', self.search_path_query)
             cur.execute(self.search_path_query)
-            return [x[0] for x in cur.fetchall()]
+
+            # postgresql includes pg_catalog in search path implicitly
+            return [x[0] for x in cur.fetchall()] + ['pg_catalog']
 
     def schemata(self):
         """Returns a list of schema names in the database"""
@@ -297,6 +305,6 @@ class PGExecute(object):
 
         with self.conn.cursor() as cur:
             _logger.debug('Functions Query. sql: %r', self.functions_query)
-            cur.execute(self.functions_query)
+            cur.execute(self.functions_query, self.functions_whitelist)
             for row in cur:
                 yield row
