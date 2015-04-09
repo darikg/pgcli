@@ -35,11 +35,12 @@ def test_select_suggests_cols_and_funcs():
          {'type': 'column', 'tables': []},
          {'type': 'function', 'schema': []}])
 
-def test_from_suggests_tables_and_schemas():
+def test_from_suggests_tables_schemas_views_and_functions():
     suggestions = suggest_type('SELECT * FROM ', 'SELECT * FROM ')
     assert sorted_dicts(suggestions) == sorted_dicts([
         {'type': 'table', 'schema': []},
         {'type': 'view', 'schema': []},
+        {'type': 'function'},
         {'type': 'schema'}])
 
 def test_distinct_suggests_cols():

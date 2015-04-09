@@ -205,12 +205,18 @@ class PGCompleter(Completer):
                 completions.extend(cols)
 
             elif suggestion['type'] == 'function':
-                funcs = self.populate_schema_objects(
-                    suggestion['schema'], 'functions')
+                filt = suggestion.get('filter')
+                if filt:
+                    # Restrict suggested functions based on their metadata
+                    funcs = self.populate_functions(suggestion['schema'], filt)
+                else:
+                    # Suggest all functions
+                    funcs = self.populate_schema_objects(
+                        suggestion['schema'], 'functions')
 
-                if not suggestion['schema']:
-                    # also suggest hardcoded functions
-                    funcs.extend(self.functions)
+                    if not suggestion['schema']:
+                        # also suggest hardcoded functions
+                        funcs.extend(self.functions)
 
                 funcs = self.find_matches(word_before_cursor, funcs)
                 completions.extend(funcs)
@@ -323,5 +329,21 @@ class PGCompleter(Completer):
 
         return objects
 
+    def populate_functions(self, schema, filter_prop):
+        """Returns a list of function names whose metadata's value is true"""
 
+        metadata = self.dbmetadata['functions']
+
+        if schema:
+            try:
+                return [f for (f, meta) in metadata[schema].items()
+                          if meta[filter_prop]]
+            except KeyError:
+                return []
+
+        else:
+            schemas = self.search_path
+            return [f for schema in schemas
+                      for (f, meta) in metadata[schema].items()
+                      if meta[filter_prop]]
 

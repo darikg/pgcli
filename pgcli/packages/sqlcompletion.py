@@ -187,16 +187,20 @@ def suggest_based_on_last_token(token, text_before_cursor, full_text, identifier
                     {'type': 'function', 'schema': []}]
     elif token_v.lower() in ('copy', 'from', 'update', 'into', 'describe') or (
             token_v.lower().endswith('join') and token.ttype in Keyword):
+
+        # Suggest tables or views from the (optionally specified) schema
         schema = (identifier and identifier.get_parent_name()) or []
-        if schema:
-            # If already schema-qualified, suggest only tables/views
-            return [{'type': 'table', 'schema': schema},
-                    {'type': 'view', 'schema': schema}]
-        else:
-            # Suggest schemas OR public tables/views
-            return [{'type': 'schema'},
-                    {'type': 'table', 'schema': []},
-                    {'type': 'view', 'schema': []}]
+        suggestions = [{'type': 'table', 'schema': schema},
+                       {'type': 'view', 'schema': schema}]
+
+        if not schema:
+            suggestions.append({'type': 'schema'})
+
+        # In some cases, functions can act as tables
+        if token_v.lower() not in ('copy', 'update', 'into', 'describe'):
+            suggestions.append({'type': 'function', 'schema': schema,
+                                'filter': 'is_set_returning'})
+
     elif token_v.lower() in ('table', 'view', 'function'):
         # E.g. 'DROP FUNCTION <funcname>', 'ALTER TABLE <tablname>'
         rel_type = token_v.lower()
