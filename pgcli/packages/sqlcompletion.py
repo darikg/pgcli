@@ -199,7 +199,9 @@ def suggest_based_on_last_token(token, text_before_cursor, full_text, identifier
         # In some cases, functions can act as tables
         if token_v.lower() not in ('copy', 'update', 'into', 'describe'):
             suggestions.append({'type': 'function', 'schema': schema,
-                                'filter': 'is_set_returning'})
+                                'filter': 'is_valid_table_expression'})
+
+        return suggestions
 
     elif token_v.lower() in ('table', 'view', 'function'):
         # E.g. 'DROP FUNCTION <funcname>', 'ALTER TABLE <tablname>'

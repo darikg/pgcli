@@ -205,10 +205,10 @@ class PGCompleter(Completer):
                 completions.extend(cols)
 
             elif suggestion['type'] == 'function':
-                filt = suggestion.get('filter')
-                if filt:
+                if suggestion.get('filter') == 'is_valid_table_expression':
                     # Restrict suggested functions based on their metadata
-                    funcs = self.populate_functions(suggestion['schema'], filt)
+                    funcs = self.populate_functions(suggestion['schema'],
+                                                    lambda f: f.is_set_returning)
                 else:
                     # Suggest all functions
                     funcs = self.populate_schema_objects(
@@ -329,21 +329,29 @@ class PGCompleter(Completer):
 
         return objects
 
-    def populate_functions(self, schema, filter_prop):
-        """Returns a list of function names whose metadata's value is true"""
+    def populate_functions(self, schema, filter_func):
+        """Returns a list of function names
+
+        filter_func is a function that accepts a FunctionMetadata namedtuple
+        and returns a boolean indicating whether that function should be
+        kept or discarded
+        """
 
         metadata = self.dbmetadata['functions']
 
+        # Because of multiple dispatch, we can have multiple functions
+        # with the same name, which is why `for meta in metas` is necessary
+        # in the comprehensions below
         if schema:
             try:
-                return [f for (f, meta) in metadata[schema].items()
-                          if meta[filter_prop]]
+                return [func for (func, metas) in metadata[schema].items()
+                                for meta in metas
+                                    if filter_func(meta)]
             except KeyError:
                 return []
-
         else:
-            schemas = self.search_path
-            return [f for schema in schemas
-                      for (f, meta) in metadata[schema].items()
-                      if meta[filter_prop]]
+            return [func for schema in self.search_path
+                            for (func, metas) in metadata[schema].items()
+                                for meta in metas
+                                    if filter_func(meta)]
 

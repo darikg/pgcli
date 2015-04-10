@@ -19,7 +19,8 @@ metadata = {
                     FunctionMetadata('public', 'func1', '', '', False, False, False),
                     FunctionMetadata('public', 'func2', '', '', False, False, False),
                     FunctionMetadata('custom', 'func3', '', '', False, False, False),
-                    FunctionMetadata('custom', 'func4', '', '', False, False, True),
+                    FunctionMetadata('custom', 'func4_set_returning',
+                                     '', '', False, False, True),
                 ]
             }
 
@@ -145,7 +146,8 @@ def test_suggested_table_names_with_schema_dot(completer, complete_event):
     assert set(result) == set([
         Completion(text='users', start_position=0),
         Completion(text='products', start_position=0),
-        Completion(text='shipments', start_position=0)])
+        Completion(text='shipments', start_position=0),
+        Completion(text='func4_set_returning', start_position=0),])
 
 def test_suggested_column_names_with_qualified_alias(completer, complete_event):
     """
@@ -247,4 +249,4 @@ def test_schema_qualified_function_name(completer, complete_event):
         Document(text=text, cursor_position=postion), complete_event))
     assert result == set([
         Completion(text='func3', start_position=-len('func')),
-        Completion(text='func4', start_position=-len('func'))])
+        Completion(text='func4_set_returning', start_position=-len('func'))])
