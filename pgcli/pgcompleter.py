@@ -208,7 +208,7 @@ class PGCompleter(Completer):
                 if suggestion.get('filter') == 'is_valid_table_expression':
                     # Restrict suggested functions based on their metadata
                     funcs = self.populate_functions(suggestion['schema'],
-                                                    lambda f: f.is_set_returning)
+                                                    is_valid_table_expression)
                 else:
                     # Suggest all functions
                     funcs = self.populate_schema_objects(
@@ -355,3 +355,11 @@ class PGCompleter(Completer):
                                 for meta in metas
                                     if filter_func(meta)]
 
+
+def is_valid_table_expression(func_meta):
+    """Determine if a function can be be used in the FROM clause
+    :param func_meta: FunctionMetadata namedtuple
+    :return: bool
+    """
+    return func_meta.is_set_returning or not (
+           func_meta.is_aggregate or func_meta.is_window)
