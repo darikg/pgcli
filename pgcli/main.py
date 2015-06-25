@@ -23,7 +23,7 @@ from pygments.token import Token
 
 from .packages.tabulate import tabulate
 from .packages.expanded import expanded_table
-from .packages.pgspecial.main import (COMMANDS, NO_QUERY)
+from .packages.pgspecial.main import (PGSpecial, NO_QUERY)
 import pgcli.packages.pgspecial as special
 from .pgcompleter import PGCompleter
 from .pgtoolbar import create_toolbar_tokens_func
@@ -62,11 +62,13 @@ class PGCli(object):
         default_config = os.path.join(package_root, 'pgclirc')
         write_default_config(default_config, '~/.pgclirc')
 
+        self.special = PGSpecial()
+
         # Load config.
         c = self.config = load_config('~/.pgclirc', default_config)
         self.multi_line = c['main'].as_bool('multi_line')
         self.vi_mode = c['main'].as_bool('vi')
-        special.set_timing(c['main'].as_bool('timing'))
+        self.special.timing_enabled = c['main'].as_bool('timing')
         self.table_format = c['main']['table_format']
         self.syntax_style = c['main']['syntax_style']
 
@@ -82,13 +84,15 @@ class PGCli(object):
         self.register_special_commands()
 
     def register_special_commands(self):
-        special.register_special_command(self.change_db, '\\c',
-                '\\c[onnect] database_name', 'Change to a new database.',
-                aliases=('use', '\\connect', 'USE'))
-        special.register_special_command(self.refresh_completions, '\\#',
-                '\\#', 'Refresh auto-completions.', arg_type=NO_QUERY)
-        special.register_special_command(self.refresh_completions, '\\refresh',
-                '\\refresh', 'Refresh auto-completions.', arg_type=NO_QUERY)
+
+        self.special.register(self.change_db, '\\c',
+                              '\\c[onnect] database_name',
+                              'Change to a new database.',
+                              aliases=('use', '\\connect', 'USE'))
+        self.special.register(self.refresh_completions, '\\#', '\\#',
+                              'Refresh auto-completions.', arg_type=NO_QUERY)
+        self.special.register(self.refresh_completions, '\\refresh', '\\refresh',
+                              'Refresh auto-completions.', arg_type=NO_QUERY)
 
     def change_db(self, pattern, **_):
         if pattern:

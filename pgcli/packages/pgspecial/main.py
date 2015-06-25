@@ -18,6 +18,69 @@ COMMANDS = {}
 class CommandNotFound(Exception):
     pass
 
+
+@export
+class PGSpecial(object):
+    def __init__(self):
+        self.use_expanded_output = False
+        self.timing_enabled = True
+
+        self.commands = COMMANDS.copy()
+        self.register(self.show_help, '\\?', '\\?', 'Show Help.',
+                      arg_type=NO_QUERY)
+
+        self.register(self.toggle_timing, '\\timing', '\\timing',
+                      'Toggle timing of commands.', arg_type=NO_QUERY)
+
+        self.register(self.toggle_expanded_output, '\\x', '\\x',
+                      'Toggle expanded output.', arg_type=NO_QUERY)
+
+
+    def register(self, *args, **kwargs):
+        register_special_command(*args, command_dict=self.commands, **kwargs)
+
+    def execute(self, cur, sql):
+        commands = self.commands
+        command, verbose, pattern = parse_special_command(sql)
+
+        if (command not in commands) and (command.lower() not in commands):
+            raise CommandNotFound
+
+        try:
+            special_cmd = commands[command]
+        except KeyError:
+            special_cmd = commands[command.lower()]
+            if special_cmd.case_sensitive:
+                raise CommandNotFound('Command not found: %s' % command)
+
+        if special_cmd.arg_type == NO_QUERY:
+            return special_cmd.handler()
+        elif special_cmd.arg_type == PARSED_QUERY:
+            return special_cmd.handler(cur=cur, pattern=pattern, verbose=verbose)
+        elif special_cmd.arg_type == RAW_QUERY:
+            return special_cmd.handler(cur=cur, query=sql)
+
+    def show_help(self):
+        headers = ['Command', 'Description']
+        result = []
+
+        for _, value in sorted(self.commands.items()):
+            if not value.hidden:
+                result.append((value.syntax, value.description))
+        return [(None, result, headers, None)]
+
+    def toggle_timing(self):
+        self.timing_enabled = not self.timing_enabled
+        message = "Timing is "
+        message += "on." if self.timing_enabled else "off."
+        return [(None, None, None, message)]
+
+    def toggle_expanded_output(self):
+        self.use_expanded_output = not self.use_expanded_output
+        message = u"Expanded display is "
+        message += u"on." if self.use_expanded_output else u"off."
+        return [(None, None, None, message)]
+
 @export
 def parse_special_command(sql):
     command, _, arg = sql.partition(' ')
@@ -25,6 +88,7 @@ def parse_special_command(sql):
 
     command = command.strip().replace('+', '')
     return (command, verbose, arg.strip())
+
 
 @export
 def special_command(command, syntax, description, arg_type=PARSED_QUERY,
@@ -35,49 +99,22 @@ def special_command(command, syntax, description, arg_type=PARSED_QUERY,
         return wrapped
     return wrapper
 
-@export
+
 def register_special_command(handler, command, syntax, description,
-        arg_type=PARSED_QUERY, hidden=False, case_sensitive=True, aliases=()):
+        arg_type=PARSED_QUERY, hidden=False, case_sensitive=True, aliases=(),
+        command_dict=None):
+
+    command_dict = command_dict or COMMANDS
+
     cmd = command.lower() if not case_sensitive else command
-    COMMANDS[cmd] = SpecialCommand(handler, syntax, description, arg_type,
+    command_dict[cmd] = SpecialCommand(handler, syntax, description, arg_type,
                                    hidden, case_sensitive)
     for alias in aliases:
         cmd = alias.lower() if not case_sensitive else alias
-        COMMANDS[cmd] = SpecialCommand(handler, syntax, description, arg_type,
+        command_dict[cmd] = SpecialCommand(handler, syntax, description, arg_type,
                                        case_sensitive=case_sensitive,
                                        hidden=True)
 
-
-@export
-def execute(cur, sql):
-    command, verbose, pattern = parse_special_command(sql)
-
-    if (command not in COMMANDS) and (command.lower() not in COMMANDS):
-        raise CommandNotFound
-
-    try:
-        special_cmd = COMMANDS[command]
-    except KeyError:
-        special_cmd = COMMANDS[command.lower()]
-        if special_cmd.case_sensitive:
-            raise CommandNotFound('Command not found: %s' % command)
-
-    if special_cmd.arg_type == NO_QUERY:
-        return special_cmd.handler()
-    elif special_cmd.arg_type == PARSED_QUERY:
-        return special_cmd.handler(cur=cur, pattern=pattern, verbose=verbose)
-    elif special_cmd.arg_type == RAW_QUERY:
-        return special_cmd.handler(cur=cur, query=sql)
-
-@special_command('\\?', '\\?', 'Show Help.', arg_type=NO_QUERY)
-def show_help():
-    headers = ['Command', 'Description']
-    result = []
-
-    for _, value in sorted(COMMANDS.items()):
-        if not value.hidden:
-            result.append((value.syntax, value.description))
-    return [(None, result, headers, None)]
 
 @special_command('\\e', '\\e [file]', 'Edit the query with external editor.', arg_type=NO_QUERY)
 def doc_only():
