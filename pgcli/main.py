@@ -296,7 +296,7 @@ class PGCli(object):
                     res = []
                     start = time()
                     # Run the query.
-                    res = pgexecute.run(document.text)
+                    res = pgexecute.run(document.text, self.pgspecial)
                     duration = time() - start
                     successful = True
                     output = []
