@@ -96,16 +96,8 @@ def test_invalid_column_name(executor):
         run(executor, 'select invalid command')
     assert 'column "invalid" does not exist' in str(excinfo.value)
 
-@pytest.yield_fixture(params=[True, False])
-def expanded(request, executor):
-    if request.param:
-        run(executor, '\\x')
-    yield request.param
-    if request.param:
-        run(executor, '\\x')
-
 @dbtest
-def test_unicode_support_in_output(executor, expanded):
+def test_unicode_support_in_output(executor):
     run(executor, "create table unicodechars(t text)")
     run(executor, "insert into unicodechars (t) values ('é')")
 
@@ -155,7 +147,7 @@ def test_unicode_support_in_unknown_type(executor):
 
 
 @requires_json
-def test_json_renders_without_u_prefix(executor, expanded):
+def test_json_renders_without_u_prefix(executor):
     run(executor, "create table jsontest(d json)")
     run(executor, """insert into jsontest (d) values ('{"name": "Éowyn"}')""")
     result = run(executor, "SELECT d FROM jsontest LIMIT 1", join=True)
@@ -164,7 +156,7 @@ def test_json_renders_without_u_prefix(executor, expanded):
 
 
 @requires_jsonb
-def test_jsonb_renders_without_u_prefix(executor, expanded):
+def test_jsonb_renders_without_u_prefix(executor):
     run(executor, "create table jsonbtest(d jsonb)")
     run(executor, """insert into jsonbtest (d) values ('{"name": "Éowyn"}')""")
     result = run(executor, "SELECT d FROM jsonbtest LIMIT 1", join=True)
