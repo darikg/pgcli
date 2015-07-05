@@ -243,7 +243,7 @@ class PGCompleter(Completer):
                                            if count > 1 and col != '*']
 
                 cols = self.find_matches(word_before_cursor, scoped_cols,
-                                         display_meta='column')
+                                         meta='column')
                 completions.extend(cols)
 
             elif suggestion['type'] == 'function':
@@ -251,7 +251,7 @@ class PGCompleter(Completer):
                 funcs = self.populate_schema_objects(
                     suggestion['schema'], 'functions')
                 user_funcs = self.find_matches(word_before_cursor, funcs,
-                                               display_meta='function')
+                                               meta='function')
                 completions.extend(user_funcs)
 
                 if not suggestion['schema']:
@@ -261,7 +261,7 @@ class PGCompleter(Completer):
                                                          self.functions,
                                                          start_only=True,
                                                          fuzzy=False,
-                                                         display_meta='function')
+                                                         meta='function')
                     completions.extend(predefined_funcs)
 
             elif suggestion['type'] == 'schema':
@@ -275,7 +275,7 @@ class PGCompleter(Completer):
 
                 schema_names = self.find_matches(word_before_cursor,
                                                  schema_names,
-                                                 display_meta='schema')
+                                                 meta='schema')
                 completions.extend(schema_names)
 
             elif suggestion['type'] == 'table':
@@ -289,7 +289,7 @@ class PGCompleter(Completer):
                     tables = [t for t in tables if not t.startswith('pg_')]
 
                 tables = self.find_matches(word_before_cursor, tables,
-                                           display_meta='table')
+                                           meta='table')
                 completions.extend(tables)
 
             elif suggestion['type'] == 'view':
@@ -301,25 +301,25 @@ class PGCompleter(Completer):
                     views = [v for v in views if not v.startswith('pg_')]
 
                 views = self.find_matches(word_before_cursor, views,
-                                          display_meta='view')
+                                          meta='view')
                 completions.extend(views)
 
             elif suggestion['type'] == 'alias':
                 aliases = suggestion['aliases']
                 aliases = self.find_matches(word_before_cursor, aliases,
-                                            display_meta='alias')
+                                            meta='alias')
                 completions.extend(aliases)
 
             elif suggestion['type'] == 'database':
                 dbs = self.find_matches(word_before_cursor, self.databases,
-                                        display_meta='database')
+                                        meta='database')
                 completions.extend(dbs)
 
             elif suggestion['type'] == 'keyword':
                 keywords = self.find_matches(word_before_cursor, self.keywords,
                                              start_only=True,
                                              fuzzy=False,
-                                             display_meta='keyword')
+                                             meta='keyword')
                 completions.extend(keywords)
 
             elif suggestion['type'] == 'special':
@@ -341,7 +341,7 @@ class PGCompleter(Completer):
                 types = self.populate_schema_objects(
                     suggestion['schema'], 'datatypes')
                 types = self.find_matches(word_before_cursor, types,
-                                          display_meta='datatype')
+                                          meta='datatype')
                 completions.extend(types)
 
                 if not suggestion['schema']:
@@ -350,7 +350,7 @@ class PGCompleter(Completer):
                                               self.datatypes,
                                               start_only=True,
                                               fuzzy=False,
-                                              display_meta='datatype')
+                                              meta='datatype')
                     completions.extend(types)
 
             elif suggestion['type'] == 'namedquery':
@@ -358,7 +358,7 @@ class PGCompleter(Completer):
                                             namedqueries.list(),
                                             start_only=False,
                                             fuzzy=True,
-                                            display_meta='named query')
+                                            meta='named query')
                 completions.extend(queries)
 
         return completions
