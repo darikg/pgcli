@@ -53,7 +53,6 @@ class PGCompleter(Completer):
             self.reserved_words.update(x.split())
         self.name_pattern = re.compile("^[_a-z][_a-z0-9\$]*$")
 
-        self.special_commands = []
         self.databases = []
         self.dbmetadata = {'tables': {}, 'views': {}, 'functions': {},
                            'datatypes': {}}
