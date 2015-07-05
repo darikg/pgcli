@@ -349,9 +349,10 @@ class PGCompleter(Completer):
                 desc = [commands[cmd].description for cmd in cmd_names]
 
                 special = self.find_matches(word_before_cursor,
-                                            self.special_commands,
+                                            cmd_names,
                                             start_only=True,
-                                            fuzzy=False)
+                                            fuzzy=False,
+                                            meta_collection=desc)
                 completions.extend(special)
 
             elif suggestion['type'] == 'datatype':
