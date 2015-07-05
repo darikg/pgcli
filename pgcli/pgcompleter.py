@@ -327,8 +327,10 @@ class PGCompleter(Completer):
                 if not self.pgspecial:
                     continue
 
-                special = [(cmd, meta.description)
-                           for (cmd, meta) in self.pgspecial.commands.items]
+                commands = self.pgspecial.commands
+                cmd_names = commands.keys()
+                desc = [commands[cmd].description for cmd in cmd_names]
+
                 special = self.find_matches(word_before_cursor,
                                             self.special_commands,
                                             start_only=True,
