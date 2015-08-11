@@ -138,17 +138,23 @@ class PGCompleter(Completer):
             self.all_completions.add(column)
 
     def extend_functions(self, func_data):
+        
+        # func_data is a list of function metadata namedtuples
+        # with fields schema_name, func_name, arg_list, result,
+        # is_aggregate, is_window, is_set_returning
 
-        # func_data is an iterator of (schema_name, function_name)
-
-        # dbmetadata['functions']['schema_name']['function_name'] should return
-        # function metadata -- right now we're not storing any further metadata
-        # so just default to None as a placeholder
+        # dbmetadata['schema_name']['functions']['function_name'] should return
+        # the function metadata namedtuple for the corresponding function
         metadata = self.dbmetadata['functions']
 
         for f in func_data:
-            schema, func = self.escaped_names(f)
-            metadata[schema][func] = None
+            schema, func = self.escaped_names([f.schema_name, f.func_name])
+            
+            if func in metadata[schema]:
+                metadata[schema][func].append(f)
+            else:
+                metadata[schema][func] = [f]
+
             self.all_completions.add(func)
 
     def extend_datatypes(self, type_data):
@@ -270,21 +276,27 @@ class PGCompleter(Completer):
                 completions.extend(cols)
 
             elif suggestion['type'] == 'function':
-                # suggest user-defined functions using substring matching
-                funcs = self.populate_schema_objects(
-                    suggestion['schema'], 'functions')
-                user_funcs = self.find_matches(word_before_cursor, funcs,
-                                               meta='function')
-                completions.extend(user_funcs)
+                if suggestion.get('filter') == 'is_valid_table_expression':
+                    # Restrict suggested functions based on their metadata
+                    funcs = self.populate_functions(suggestion['schema'],
+                                                    is_valid_table_expression)
+                else:
+                    
+                    # suggest user-defined functions using substring matching
+                    funcs = self.populate_schema_objects(
+                        suggestion['schema'], 'functions')
+                    user_funcs = self.find_matches(word_before_cursor, funcs,
+                                                   meta='function')
+                    completions.extend(user_funcs)
 
-                if not suggestion['schema']:
-                    # also suggest hardcoded functions using startswith
-                    # matching
-                    predefined_funcs = self.find_matches(word_before_cursor,
-                                                         self.functions,
-                                                         start_only=True,
-                                                         fuzzy=False,
-                                                         meta='function')
+                    if not suggestion['schema']:
+                        # also suggest hardcoded functions using startswith
+                        # matching
+                        predefined_funcs = self.find_matches(word_before_cursor,
+                                                             self.functions,
+                                                             start_only=True,
+                                                             fuzzy=False,
+                                                             meta='function')
                     completions.extend(predefined_funcs)
 
             elif suggestion['type'] == 'schema':
@@ -453,3 +465,38 @@ class PGCompleter(Completer):
                            for obj in metadata[schema].keys()]
 
         return objects
+
+    def populate_functions(self, schema, filter_func):
+        """Returns a list of function names
+
+        filter_func is a function that accepts a FunctionMetadata namedtuple
+        and returns a boolean indicating whether that function should be
+        kept or discarded
+        """
+
+        metadata = self.dbmetadata['functions']
+
+        # Because of multiple dispatch, we can have multiple functions
+        # with the same name, which is why `for meta in metas` is necessary
+        # in the comprehensions below
+        if schema:
+            try:
+                return [func for (func, metas) in metadata[schema].items()
+                                for meta in metas
+                                    if filter_func(meta)]
+            except KeyError:
+                return []
+        else:
+            return [func for schema in self.search_path
+                            for (func, metas) in metadata[schema].items()
+                                for meta in metas
+                                    if filter_func(meta)]
+
+
+def is_valid_table_expression(func_meta):
+    """Determine if a function can be be used in the FROM clause
+    :param func_meta: FunctionMetadata namedtuple
+    :return: bool
+    """
+    return func_meta.is_set_returning or not (
+           func_meta.is_aggregate or func_meta.is_window)

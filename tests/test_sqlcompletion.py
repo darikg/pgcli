@@ -65,6 +65,8 @@ def test_select_suggests_cols_and_funcs():
          {'type': 'column', 'tables': []},
          {'type': 'function', 'schema': []}])
 
+def test_from_suggests_tables_schemas_views_and_functions():
+    suggestions = suggest_type('SELECT * FROM ', 'SELECT * FROM ')
 @pytest.mark.parametrize('expression', [
     'SELECT * FROM ',
     'INSERT INTO ',
@@ -78,6 +80,7 @@ def test_expression_suggests_tables_views_and_schemas(expression):
     assert sorted_dicts(suggestions) == sorted_dicts([
         {'type': 'table', 'schema': []},
         {'type': 'view', 'schema': []},
+        {'type': 'function', 'schema': [], 'filter': 'is_valid_table_expression'},
         {'type': 'schema'}])
 
 @pytest.mark.parametrize('expression', [
@@ -121,6 +124,7 @@ def test_table_comma_suggests_tables_and_schemas():
     assert sorted_dicts(suggestions) == sorted_dicts([
         {'type': 'table', 'schema': []},
         {'type': 'view', 'schema': []},
+        {'type': 'function', 'schema': [], 'filter': 'is_valid_table_expression'},
         {'type': 'schema'}])
 
 def test_into_suggests_tables_and_schemas():
@@ -234,6 +238,7 @@ def test_sub_select_table_name_completion(expression):
     assert sorted_dicts(suggestion) == sorted_dicts([
         {'type': 'table', 'schema': []},
         {'type': 'view', 'schema': []},
+        {'type': 'function', 'schema': [], 'filter': 'is_valid_table_expression'},
         {'type': 'schema'}])
 
 def test_sub_select_col_name_completion():
@@ -268,6 +273,7 @@ def test_join_suggests_tables_and_schemas(tbl_alias, join_type):
     assert sorted_dicts(suggestion) == sorted_dicts([
         {'type': 'table', 'schema': []},
         {'type': 'view', 'schema': []},
+        {'type': 'function', 'schema': [], 'filter': 'is_valid_table_expression'},
         {'type': 'schema'}])
 
 def test_left_join_with_comma():
@@ -335,6 +341,7 @@ def test_2_statements_2nd_current():
     assert sorted_dicts(suggestions) == sorted_dicts([
          {'type': 'table', 'schema': []},
          {'type': 'view', 'schema': []},
+         {'type': 'function', 'schema': [], 'filter': 'is_valid_table_expression'},
          {'type': 'schema'}])
 
     suggestions = suggest_type('select * from a; select  from b',
@@ -349,6 +356,7 @@ def test_2_statements_2nd_current():
     assert sorted_dicts(suggestions) == sorted_dicts([
          {'type': 'table', 'schema': []},
          {'type': 'view', 'schema': []},
+         {'type': 'function', 'schema': [], 'filter': 'is_valid_table_expression'},
          {'type': 'schema'}])
 
 def test_2_statements_1st_current():
@@ -357,6 +365,7 @@ def test_2_statements_1st_current():
     assert sorted_dicts(suggestions) == sorted_dicts([
          {'type': 'table', 'schema': []},
          {'type': 'view', 'schema': []},
+         {'type': 'function', 'schema': [], 'filter': 'is_valid_table_expression'},
          {'type': 'schema'}])
 
     suggestions = suggest_type('select  from a; select * from b',
@@ -371,6 +380,7 @@ def test_3_statements_2nd_current():
     assert sorted_dicts(suggestions) == sorted_dicts([
          {'type': 'table', 'schema': []},
          {'type': 'view', 'schema': []},
+         {'type': 'function', 'schema': [], 'filter': 'is_valid_table_expression'},
          {'type': 'schema'}])
 
     suggestions = suggest_type('select * from a; select  from b; select * from c',
