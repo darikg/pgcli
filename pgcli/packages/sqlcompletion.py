@@ -3,6 +3,7 @@ import sys
 import sqlparse
 from sqlparse.sql import Comparison, Identifier, Where
 from .parseutils import last_word, extract_tables, find_prev_keyword
+from .function_parseutils import is_function_def, delineate_function_body
 from .pgspecial import parse_special_command
 
 PY2 = sys.version_info[0] == 2
@@ -70,6 +71,17 @@ def suggest_type(full_text, text_before_cursor):
     else:
         # The empty string
         statement = None
+
+    if is_function_def(full_text):
+        # The user is editing a CREATE FUNCTION command
+        # Check to see if the cursor is within the function body, in which case,
+        # extract the function body contents, and operate only on it
+        start, stop = delineate_function_body(full_text)
+        current_pos = len(text_before_cursor)
+        if start < current_pos <= stop:
+            text_before_cursor = full_text[start:current_pos]
+            full_text = full_text[start:stop]
+            return suggest_type(full_text, text_before_cursor)
 
     # Check for special commands and handle those separately
     if statement:

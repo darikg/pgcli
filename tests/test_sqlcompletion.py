@@ -483,3 +483,20 @@ def test_invalid_sql():
     text = 'selt *'
     suggestions = suggest_type(text, text)
     assert suggestions == [{'type': 'keyword'}]
+
+
+def test_suggestions_inside_function_body():
+    sql = ''' CREATE FUNCTION foo() RETURNS VOID AS
+                $$ SELECT * FROM '''
+    suggestions = suggest_type(sql, sql)
+    assert sorted_dicts(suggestions) == sorted_dicts([
+        {'type': 'table', 'schema': []},
+        {'type': 'view', 'schema': []},
+        {'type': 'schema'}])
+
+
+def test_suggestions_outside_function_body_query():
+    sql = """ CREATE FUNCTION foo() RETURNS VOID AS
+                'SELECT * FROM foo $$'"""
+    suggestions = suggest_type(sql, sql)
+    assert suggestions == [{'type': 'keyword'}]
