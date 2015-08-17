@@ -9,6 +9,7 @@ create_function_regex = re.compile(r'^CREATE\s*(?:OR\s*REPLACE\s*)?FUNCTION',
 
 dollar_quote_regex = re.compile(r'^\$[^$]*\$$')
 
+
 def is_function_def(sql):
     """Returns truthy if the sql statement defines a function"""
     return create_function_regex.match(sql)
@@ -52,7 +53,8 @@ def find_function_body_as_string_literal(parsed, search_idx):
     if not literal:
         return None, None
 
-    start = tok_start_pos(parsed, literal) + 1
+    literal_idx = parsed.token_index(literal)
+    start = total_tok_len(parsed.tokens[:literal_idx]) + 1
     body = literal.value[1:-1]
     stop = start + len(body)
 
@@ -98,9 +100,3 @@ def find_function_body_as_ungrouped_tokens(parsed, search_idx):
 def total_tok_len(tokens):
     """Sum the length of the raw strings of an array of sqlparse Tokens"""
     return sum(len(t.to_unicode()) for t in tokens)
-
-
-def tok_start_pos(parent, child):
-    """Calculate the start position of an sqlparse Token within its parent"""
-    child_idx = parent.token_index(child)
-    return total_tok_len(parent.tokens[:child_idx])
