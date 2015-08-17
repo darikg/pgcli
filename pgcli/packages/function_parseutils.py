@@ -66,7 +66,7 @@ def find_function_body_as_ungrouped_tokens(parsed, search_idx):
     :return: Tuple of indices (start, stop) delineating the function body
     """
 
-    tokens = list(parsed.flatten())
+    tokens = parsed.tokens
 
     for (i, tok1) in enumerate(tokens[search_idx+1:], search_idx+1):
 
