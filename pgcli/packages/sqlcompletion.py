@@ -78,7 +78,7 @@ def suggest_type(full_text, text_before_cursor):
         # extract the function body contents, and operate only on it
         start, stop = delineate_function_body(full_text)
         current_pos = len(text_before_cursor)
-        if start < current_pos <= stop:
+        if start and start < current_pos <= stop:
             text_before_cursor = full_text[start:current_pos]
             full_text = full_text[start:stop]
             return suggest_type(full_text, text_before_cursor)
