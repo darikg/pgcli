@@ -119,6 +119,9 @@ class PGExecute(object):
                 INNER JOIN pg_catalog.pg_namespace n
                     ON n.oid = p.pronamespace
         WHERE 	n.nspname NOT IN ('pg_catalog', 'information_schema')
+                    OR (n.nspname = 'pg_catalog'
+                        AND p.proname IN ('generate_series',
+                                          'generate_subscripts'))
         ORDER BY 1, 2'''
 
 
