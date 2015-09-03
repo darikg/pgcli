@@ -76,8 +76,11 @@ def test_functions_query(executor):
     run(executor, '''create function func4(x int) returns setof int language sql
                      as $$select generate_series(1,5)$$;''')
 
-    funcs = sorted(list(executor.functions()))
-    assert funcs == [
+    funcs = set(list(executor.functions()))
+
+    # funcs should include our custom functions as well as builtin SRFs such as
+    # generate_series.
+    assert funcs >= set([
         FunctionMetadata('public', 'func1', '',
                          'integer', False, False, False),
         FunctionMetadata('public', 'func3', '',
@@ -86,7 +89,7 @@ def test_functions_query(executor):
                          'SETOF integer', False, False, True),
         FunctionMetadata('schema1', 'func2', '',
                          'integer', False, False, False),
-      ]
+      ])
 
 
 @dbtest
