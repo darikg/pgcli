@@ -16,7 +16,7 @@ class CompletionRefresher(object):
         self._restart_completion = threading.Event()
 
     def refresh(self, executor, special, callbacks):
-        if self._completer_thread and self._completer_thread.is_alive():
+        if self.is_refreshing():
             self._restart_completion.set()
             return [(None, None, None, 'Auto-completion refresh restarted.')]
         else:
@@ -27,6 +27,9 @@ class CompletionRefresher(object):
             self._completer_thread.start()
             return [(None, None, None,
                      'Auto-completion refresh started in the background.')]
+
+    def is_refreshing(self):
+        return self._completer_thread and self._completer_thread.is_alive()
 
     def _bg_refresh(self, pgexecute, special, callbacks):
         completer = PGCompleter(smart_completion=True, pgspecial=special)
