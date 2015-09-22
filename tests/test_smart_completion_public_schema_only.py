@@ -14,7 +14,8 @@ metadata = {
                 'functions': [
                     ['custom_func1', '', '', False, False, False],
                     ['custom_func2', '', '', False, False, False],
-                    ['set_returning_func', '', '', False, False, True]],
+                    ['set_returning_func', '', 'TABLE (x INT, y INT)',
+                                            False, False, True]],
                 'datatypes': ['custom_type1', 'custom_type2'],
             }
 
@@ -415,4 +416,15 @@ def test_suggest_columns_from_escaped_table_alias(completer, complete_event):
         Completion(text='id', start_position=0, display_meta='column'),
         Completion(text='"insert"', start_position=0, display_meta='column'),
         Completion(text='"ABC"', start_position=0, display_meta='column'),
+    ])
+
+
+def test_suggest_columns_from_set_returning_function(completer, complete_event):
+    sql = 'select  from set_returning_func()'
+    pos = len('select ')
+    result = completer.get_completions(Document(text=sql, cursor_position=pos),
+                                       complete_event)
+    assert set(result) == set([
+        Completion(text='x', start_position=0, display_meta='column'),
+        Completion(text='y', start_position=0, display_meta='column'),
     ])

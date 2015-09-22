@@ -416,21 +416,27 @@ class PGCompleter(Completer):
                 schema = self.escape_name(tbl.schema)
                 relname = self.escape_name(tbl.name)
 
-                # We don't know if schema.relname is a table or view. Since
-                # tables and views cannot share the same name, we can check one
-                # at a time
-                try:
-                    columns.extend(meta['tables'][schema][relname])
+                if tbl.is_function:
+                    # Return column names from a set-returning function
+                    for func in meta['functions'][schema][relname]:
+                        # func is a FunctionMetadata object
+                        columns.extend(func.fieldnames())
+                else:
+                    # We don't know if schema.relname is a table or view. Since
+                    # tables and views cannot share the same name, we can check
+                    # one at a time
+                    try:
+                        columns.extend(meta['tables'][schema][relname])
 
-                    # Table exists, so don't bother checking for a view
-                    continue
-                except KeyError:
-                    pass
+                        # Table exists, so don't bother checking for a view
+                        continue
+                    except KeyError:
+                        pass
 
-                try:
-                    columns.extend(meta['views'][schema][relname])
-                except KeyError:
-                    pass
+                    try:
+                        columns.extend(meta['views'][schema][relname])
+                    except KeyError:
+                        pass
 
             else:
                 # Schema not specified, so traverse the search path looking for
@@ -440,17 +446,22 @@ class PGCompleter(Completer):
                 for schema in self.search_path:
                     relname = self.escape_name(tbl.name)
 
-                    try:
-                        columns.extend(meta['tables'][schema][relname])
-                        break
-                    except KeyError:
-                        pass
+                    if tbl.is_function:
+                        for func in meta['functions'][schema][relname]:
+                            # func is a FunctionMetadata object
+                            columns.extend(func.fieldnames())
+                    else:
+                        try:
+                            columns.extend(meta['tables'][schema][relname])
+                            break
+                        except KeyError:
+                            pass
 
-                    try:
-                        columns.extend(meta['views'][schema][relname])
-                        break
-                    except KeyError:
-                        pass
+                        try:
+                            columns.extend(meta['views'][schema][relname])
+                            break
+                        except KeyError:
+                            pass
 
         return columns
 
