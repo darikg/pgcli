@@ -26,7 +26,16 @@ class FunctionMetadata(object):
                                                'result', 'is_aggregate',
                                                'is_window'])
 
+    def fieldnames(self):
+        """Returns a list of output field names"""
 
+        if self.result.lower() == 'void':
+            return []
+        elif self.result.startswith('TABLE'):
+            return list(_table_def_columns(self.result))
+        else:
+            return list(_function_arg_fields(self.result,
+                                              modes=('OUT', 'INOUT')))
 
 
 
