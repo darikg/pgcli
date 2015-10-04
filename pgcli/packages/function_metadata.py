@@ -54,6 +54,10 @@ class FunctionMetadata(object):
         # their names
         return list(field_names(self.arg_list, mode_filter=('OUT', 'INOUT')))
 
+    def arguments(self):
+        """Returns a list in input argument names"""
+        return list(field_names(self.arg_list, mode_filter=('IN', 'INOUT')))
+
 
 class TypedFieldMetadata(object):
     """Describes typed field from a function signature or table definition

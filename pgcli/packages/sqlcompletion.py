@@ -233,18 +233,18 @@ def suggest_based_on_last_token(token, text_before_cursor, full_text, identifier
 
             # suggest columns that are present in more than one table
             return [{'type': 'column', 'tables': tables, 'drop_unique': True}]
-        elif p.token_first().value.lower() == 'select':
-            # If the lparen is preceeded by a space chances are we're about to
-            # do a sub-select.
-            if last_word(text_before_cursor,
-                    'all_punctuations').startswith('('):
-                return [{'type': 'keyword'}]
         elif isinstance(prev_tok, Identifier):
             # We're probably in a function argument list
             func = prev_tok.get_name()
             schema = prev_tok.get_parent_name()
             return [{'type': 'column', 'tables': extract_tables(full_text)},
                     {'type': 'argument', 'function': func, 'schema': schema}]
+        elif p.token_first().value.lower() == 'select':
+            # If the lparen is preceeded by a space chances are we're about to
+            # do a sub-select.
+            if last_word(text_before_cursor,
+                    'all_punctuations').startswith('('):
+                return [{'type': 'keyword'}]
         else:
             return [{'type': 'keywords'}]
 

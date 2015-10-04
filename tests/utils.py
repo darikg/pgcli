@@ -14,16 +14,8 @@ def db_connection(dbname=None):
     return conn
 
 
-try:
-    conn = db_connection()
-    CAN_CONNECT_TO_DB = True
-    SERVER_VERSION = conn.server_version
-    json_types = register_json_typecasters(conn, lambda x: x)
-    JSON_AVAILABLE = 'json' in json_types
-    JSONB_AVAILABLE = 'jsonb' in json_types
-except:
-    CAN_CONNECT_TO_DB = JSON_AVAILABLE = JSONB_AVAILABLE = False
-    SERVER_VERSION = 0
+CAN_CONNECT_TO_DB = JSON_AVAILABLE = JSONB_AVAILABLE = False
+SERVER_VERSION = 0
 
 
 dbtest = pytest.mark.skipif(

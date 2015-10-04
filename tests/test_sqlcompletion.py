@@ -4,7 +4,7 @@ import pytest
 
 def sorted_dicts(dicts):
     """input is a list of dicts"""
-    return sorted(tuple(x.items()) for x in dicts)
+    return tuple(sorted(tuple(x.items()) for x in dicts))
 
 
 def test_select_suggests_cols_with_visible_table_scope():
@@ -68,10 +68,25 @@ def test_where_equals_any_suggests_columns_or_keywords():
             {'type': 'keyword'}])
 
 
-def test_lparen_suggests_cols():
+def test_lparen_suggests_columns_and_arguments():
     suggestion = suggest_type('SELECT MAX( FROM tbl', 'SELECT MAX(')
     assert suggestion == [
-        {'type': 'column', 'tables': [(None, 'tbl', None, False)]}]
+        {'type': 'column', 'tables': [(None, 'tbl', None, False)]},
+        {'type': 'argument', 'schema': None, 'function': 'MAX'}]
+
+
+@pytest.mark.parametrize('sql', [
+    'SELECT foo(',
+    'SELECT foo(bar, ',
+    'SELECT foo(bar, baz',
+    'SELECT bar(foo(',
+    'SELECT * FROM tabl WHERE foo(',
+    'SELECT * FROM tabl WHERE bar AND foo(',
+])
+def test_suggest_function_arguments(sql):
+    suggestions = suggest_type(sql, sql)
+    target = {'type': 'argument', 'schema': None, 'function': 'foo'}
+    assert sum(target == suggestion for suggestion in suggestions) == 1
 
 
 def test_select_suggests_cols_and_funcs():

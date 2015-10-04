@@ -537,12 +537,12 @@ class PGCompleter(Completer):
         if schema:
             try:
                 for meta in metadata[schema][func]:
-                    args.extend(meta.argument_names())
+                    args.extend(meta.arguments())
             except KeyError:
                 return []
         else:
             for schema in self.search_path:
                 for meta in metadata[schema][func]:
-                    args.extend(meta.argument_names())
+                    args.extend(meta.arguments())
 
         return set(args)
