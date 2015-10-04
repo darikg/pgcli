@@ -403,6 +403,12 @@ class PGCompleter(Completer):
                     start_only=False, fuzzy=True, meta='named query')
                 completions.extend(queries)
 
+            elif suggestion['type'] == 'argument':
+                args = self.populate_function_arguments(suggestion['schema'],
+                                                        suggestion['function'])
+                args = self.find_matches(word_before_cursor, args, meta='argument')
+                completions.extend(args)
+
         return completions
 
     def populate_scoped_cols(self, scoped_tbls):
@@ -525,5 +531,18 @@ class PGCompleter(Completer):
                                 for meta in metas
                                     if filter_func(meta)]
 
+    def populate_function_arguments(self, schema, func):
+        metadata = self.dbmetadata['functions']
+        args = []
+        if schema:
+            try:
+                for meta in metadata[schema][func]:
+                    args.extend(meta.argument_names())
+            except KeyError:
+                return []
+        else:
+            for schema in self.search_path:
+                for meta in metadata[schema][func]:
+                    args.extend(meta.argument_names())
 
-
+        return set(args)

@@ -239,9 +239,15 @@ def suggest_based_on_last_token(token, text_before_cursor, full_text, identifier
             if last_word(text_before_cursor,
                     'all_punctuations').startswith('('):
                 return [{'type': 'keyword'}]
+        elif isinstance(prev_tok, Identifier):
+            # We're probably in a function argument list
+            func = prev_tok.get_name()
+            schema = prev_tok.get_parent_name()
+            return [{'type': 'column', 'tables': extract_tables(full_text)},
+                    {'type': 'argument', 'function': func, 'schema': schema}]
+        else:
+            return [{'type': 'keywords'}]
 
-        # We're probably in a function argument list
-        return [{'type': 'column', 'tables': extract_tables(full_text)}]
     elif token_v in ('set', 'by', 'distinct'):
         return [{'type': 'column', 'tables': extract_tables(full_text)}]
     elif token_v in ('select', 'where', 'having'):
