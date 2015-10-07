@@ -351,6 +351,11 @@ class PGCompleter(Completer):
                 keywords = self.find_matches(
                     word_before_cursor, self.keywords, start_only=True,
                     fuzzy=False, sort_ranked=False, meta='keyword')
+
+                # Now sort them by their prevalence
+                keywords = sorted(keywords, key=self._keyword_sort_key,
+                                  reverse=True)
+
                 completions.extend(keywords)
 
             elif suggestion['type'] == 'special':
@@ -511,5 +516,8 @@ class PGCompleter(Completer):
                                 for meta in metas
                                     if filter_func(meta)]
 
+    def _keyword_sort_key(self, keyword_completion):
+        keyword = keyword_completion.text
+        return self.keyword_counter[keyword]
 
 

@@ -494,3 +494,15 @@ def test_suggest_keywords_in_proper_order(completer, complete_event):
     completions = [c.text for c in completions]
     assert completions.index('FROM') < completions.index('FREEZE')
 
+
+def test_learn_keywords(completer, complete_event):
+    sql = 'CREATE VIEW v AS SELECT 1'
+    completer.extend_query_history(sql)
+    assert completer.keyword_counter['VIEW'] == 1
+
+    sql = 'create v'
+    completions = completer.get_completions(
+        Document(text=sql, cursor_position=len(sql)), complete_event)
+    assert completions[0].text == 'VIEW'
+
+
