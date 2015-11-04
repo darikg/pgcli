@@ -10,16 +10,16 @@ environment:
       PYTHON_ARCH: "32"
 
 init:
-  - "PATH=C:\\Program Files\\PostgreSQL\\9.3\\bin\\;%PATH%"
+  - "PATH=C:\\Program Files\\PostgreSQL\\9.3\\bin\\;%PYTHON%;%PYTHON%\\Scripts;%PATH%"
   - "SET PGUSER=postgres"
   - "SET PGPASSWORD=Password12!"
   - "ECHO %PYTHON% %PYTHON_VERSION% %PYTHON_ARCH%"
 
 install:
   - ps: (new-object net.webclient).DownloadFile('http://www.stickpeople.com/projects/python/win-psycopg/2.6.1/psycopg2-2.6.1.win32-py3.4-pg9.4.4-release.exe', 'C:/psycopg.exe')
-  - "easy_install.exe c:/psycopg.exe"
-  - "%PYTHON%/Scripts/pip.exe install -r requirements-win.txt"
-  - "%PYTHON%/Scripts/pip.exe install ."
+  - "easy_install c:/psycopg.exe"
+  - "pip install -r requirements-win.txt"
+  - "pip install ."
 
 test_script:
   - "%PYTHON%/Scripts/py.test"
