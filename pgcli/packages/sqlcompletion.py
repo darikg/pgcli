@@ -5,6 +5,7 @@ import sqlparse
 from collections import namedtuple
 from sqlparse.sql import Comparison, Identifier, Where
 from .parseutils import last_word, extract_tables, find_prev_keyword
+from .pgliterals.main import split_by_binary_operators
 from pgspecial.main import parse_special_command
 
 PY2 = sys.version_info[0] == 2
@@ -43,8 +44,12 @@ def suggest_type(full_text, text_before_cursor):
     A scope for a column category will be a list of tables.
     """
 
-    word_before_cursor = last_word(text_before_cursor,
-            include='many_punctuations')
+    word_before_cursor = last_word(
+        text_before_cursor, include='many_punctuations')
+
+    # If whitepsace isn't used between operators (e.g. 'foo*bar', last_word
+    # won't correctly separate them
+    word_before_cursor = split_by_binary_operators(word_before_cursor)[-1]
 
     identifier = None
 
