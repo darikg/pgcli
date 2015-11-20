@@ -650,3 +650,9 @@ def test_select_suggests_fields_from_function():
             Function(schema=None),
             Keyword()
             ])
+
+
+def test_dont_require_whitespace_around_operators():
+    sql = 'select * from foo join bar on foo.id=bar.'
+    suggestions = suggest_type(sql, sql)
+    assert Column(tables=((None, 'bar', None, False),)) in suggestions
