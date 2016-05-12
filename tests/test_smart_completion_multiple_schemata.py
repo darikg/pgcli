@@ -45,7 +45,7 @@ def completer():
 
         for table, cols in tbls.items():
             tables.append((schema, table))
-            columns.extend([(schema, table, col) for col in cols])
+            columns.extend([(schema, table, col, 'text') for col in cols])
 
     functions = [FunctionMetadata(schema, *func_meta)
                     for schema, funcs in metadata['functions'].items()
@@ -261,7 +261,10 @@ def test_suggested_aliases_after_on(completer, complete_event):
         complete_event))
     assert set(result) == set([
         Completion(text='x', start_position=0, display_meta='table alias'),
-        Completion(text='y', start_position=0, display_meta='table alias')])
+        Completion(text='y', start_position=0, display_meta='table alias'),
+        Completion(text='x.price = y.price', start_position=0, display_meta='name join'),
+        Completion(text='x.product_name = y.product_name', start_position=0, display_meta='name join'),
+        Completion(text='x.id = y.id', start_position=0, display_meta='name join')])
 
 def test_suggested_aliases_after_on_right_side(completer, complete_event):
     text = 'SELECT x.id, y.product_name FROM custom.products x JOIN custom.products y ON x.id = '

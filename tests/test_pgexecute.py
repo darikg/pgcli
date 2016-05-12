@@ -53,15 +53,15 @@ def test_schemata_table_views_and_columns_query(executor):
         ('public', 'a'), ('public', 'b'), ('schema1', 'c')])
 
     assert set(executor.table_columns()) >= set([
-        ('public', 'a', 'x'), ('public', 'a', 'y'),
-        ('public', 'b', 'z'), ('schema1', 'c', 'w')])
+        ('public', 'a', 'x', 'text'), ('public', 'a', 'y', 'text'),
+        ('public', 'b', 'z', 'text'), ('schema1', 'c', 'w', 'text')])
 
     # views
     assert set(executor.views()) >= set([
         ('public', 'd')])
 
     assert set(executor.view_columns()) >= set([
-        ('public', 'd', 'e')])
+        ('public', 'd', 'e', 'int4')])
 
 @dbtest
 def test_functions_query(executor):

@@ -3,15 +3,15 @@ import logging
 import re
 import itertools
 import operator
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from pgspecial.namedqueries import NamedQueries
 from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.contrib.completers import PathCompleter
 from prompt_toolkit.document import Document
 from .packages.sqlcompletion import (
     suggest_type, Special, Database, Schema, Table, Function, Column, View,
-    Keyword, NamedQuery, Datatype, Alias, Path)
-from .packages.parseutils import last_word
+    Keyword, NamedQuery, Datatype, Alias, Path, JoinCondition)
+from .packages.parseutils import last_word, TableReference
 from .packages.pgliterals.main import get_literals
 from .packages.prioritization import PrevalenceCounter
 from .config import load_config, config_location
@@ -29,8 +29,8 @@ NamedQueries.instance = NamedQueries.from_config(
 
 
 Match = namedtuple('Match', ['completion', 'priority'])
-
-
+ColumnMetadata = namedtuple('ColumnMetadata', ['name', 'datatype', 'foreignkeys'])
+ForeignKeyTarget = namedtuple('ForeignKeyTarget', ['schema', 'table', 'column'])
 class PGCompleter(Completer):
     keywords = get_literals('keywords')
     functions = get_literals('functions')
@@ -105,12 +105,12 @@ class PGCompleter(Completer):
 
         data = [self.escaped_names(d) for d in data]
 
-        # dbmetadata['tables']['schema_name']['table_name'] should be a list of
-        # column names. Default to an asterisk
+        # dbmetadata['tables']['schema_name']['table_name'] should be a dict of
+        # :{column_nameColumnMetaData namedtuple} . Default to *
         metadata = self.dbmetadata[kind]
         for schema, relname in data:
             try:
-                metadata[schema][relname] = ['*']
+                metadata[schema][relname] = {'*':ColumnMetadata('*', None, [])}
             except KeyError:
                 _logger.error('%r %r listed in unrecognized schema %r',
                               kind, relname, schema)
@@ -119,16 +119,18 @@ class PGCompleter(Completer):
     def extend_columns(self, column_data, kind):
         """ extend column metadata
 
-        :param column_data: list of (schema_name, rel_name, column_name) tuples
+        :param column_data: list of (schema_name, rel_name, column_name, column_type) tuples
         :param kind: either 'tables' or 'views'
         :return:
         """
-
-        column_data = [self.escaped_names(d) for d in column_data]
         metadata = self.dbmetadata[kind]
-        for schema, relname, column in column_data:
-            metadata[schema][relname].append(column)
-            self.all_completions.add(column)
+        for schema, relname, colname, datatype in column_data:
+            (schema, relname, colname) = self.escaped_names(
+                [schema, relname, colname])
+            column = ColumnMetadata(name=colname, datatype=datatype,
+                foreignkeys=[])
+            metadata[schema][relname][colname] = column
+            self.all_completions.add(colname)
 
     def extend_functions(self, func_data):
 
@@ -149,6 +151,25 @@ class PGCompleter(Completer):
                 metadata[schema][func] = [f]
 
             self.all_completions.add(func)
+
+    def extend_foreignkeys(self, fk_data):
+
+        # fk_data is a list of ForeignKey namedtuples, with fields
+        # parentschema, childschema, parenttable, childtable,
+        # parentcolumns, childcolumns
+
+        # These are added to the ColumnMetadata namedtuple for the child
+        meta = self.dbmetadata['tables']
+
+        for fk in fk_data:
+            e = self.escaped_names;
+            parentschema, childschema = e([fk.parentschema, fk.childschema])
+            parenttable, childtable = e([fk.parenttable, fk.childtable])
+            for childcol, parcol in zip(fk.childcolumns, fk.parentcolumns):
+                childcol, parcol = e([childcol, parcol])
+                colmeta =  meta[childschema][childtable][childcol]
+                fk = ForeignKeyTarget(parentschema, parenttable, parcol)
+                colmeta.foreignkeys.append((fk))
 
     def extend_datatypes(self, type_data):
 
@@ -182,7 +203,8 @@ class PGCompleter(Completer):
         self.all_completions = set(self.keywords + self.functions)
 
     def find_matches(self, text, collection, mode='fuzzy',
-                     meta=None, meta_collection=None):
+                     meta=None, meta_collection=None,
+                     type_priority=0, priority_collection = None):
         """Find completion matches for the given text.
 
         Given the user's input text and a collection of available
@@ -238,17 +260,16 @@ class PGCompleter(Completer):
                     # fuzzy matches
                     return -float('Infinity'), -match_point
 
-        if meta_collection:
-            # Each possible completion in the collection has a corresponding
-            # meta-display string
-            collection = zip(collection, meta_collection)
-        else:
-            # All completions have an identical meta
-            collection = zip(collection, itertools.repeat(meta))
+        # Fallback to meta param if meta_collection param is None
+        meta_collection = meta_collection or itertools.repeat(meta)
+        # Fallback to 0 if priority_collection param is None
+        priority_collection = priority_collection or itertools.repeat(0)
+
+        collection = zip(collection, meta_collection, priority_collection)
 
         matches = []
 
-        for item, meta in collection:
+        for item, meta, prio in collection:
             sort_key = _match(item)
             if sort_key:
                 if meta and len(meta) > 50:
@@ -264,7 +285,7 @@ class PGCompleter(Completer):
                 # the same priority as unquoted names.
                 lexical_priority = tuple(-ord(c) for c in self.unescape_name(item)) + (1,)
 
-                priority = sort_key, priority_func(item), lexical_priority
+                priority = type_priority, prio, sort_key, priority_func(item), lexical_priority
 
                 matches.append(Match(
                     completion=Completion(item, -text_len, display_meta=meta),
@@ -307,16 +328,76 @@ class PGCompleter(Completer):
     def get_column_matches(self, suggestion, word_before_cursor):
         tables = suggestion.tables
         _logger.debug("Completion column scope: %r", tables)
-        scoped_cols = self.populate_scoped_cols(tables)
-
+        scoped_cols = []
+        for cols in self.populate_scoped_cols(tables).itervalues():
+            scoped_cols.extend((c.name for c in cols))
         if suggestion.drop_unique:
             # drop_unique is used for 'tb11 JOIN tbl2 USING (...' which should
             # suggest only columns that appear in more than one table
             scoped_cols = [col for (col, count)
                                  in Counter(scoped_cols).items()
                                    if count > 1 and col != '*']
-
         return self.find_matches(word_before_cursor, scoped_cols, meta='column')
+
+    def get_join_condition_matches(self, suggestion, word_before_cursor):
+        lefttable = suggestion.lefttable and suggestion.lefttable[0].ref
+        scoped_cols = self.populate_scoped_cols(suggestion.tables)
+        found = set()
+        conds = []
+
+        colit = scoped_cols.iteritems
+        if lefttable:
+            def make_cond(tbl1, tbl2, col1, col2):
+                if tbl1 == lefttable:
+                    return col1 + ' = ' + tbl2 + '.' + col2
+                elif tbl2 == lefttable:
+                    return col2 + ' = ' + tbl1 + '.' + col1
+        else:
+            def make_cond(tbl1, tbl2, col1, col2):
+                if tbl1 < tbl2:
+                    return tbl1 + '.' + col1 + ' = ' + tbl2 + '.' + col2
+                elif tbl2 < tbl1:
+                    return tbl2 + '.' + col2 + ' = ' + tbl1 + '.' + col1
+
+        # Map (schema, table, col) to TableReference
+        coldict = {(t.schema, t.name, c.name):t for t, cs in colit()
+            for c in cs}
+        # For each fk from the available tables, check if the target table
+        # is also in the list of available tables, and in that case,
+        # add a corresponding join condition to conds.
+        for tbl, col, fk in ((tbl, col.name, fk) for tbl, cols in colit()
+          for col in cols for fk in col.foreignkeys):
+            colkey = (fk.schema, fk.table, fk.column)
+            parent = coldict.get(colkey)
+            if not parent or parent.ref == tbl.ref:
+                continue
+            cond = make_cond(parent.ref, tbl.ref, fk.column, col)
+            if cond:
+                conds.append((cond, 'fk join', 1000))
+                found.add(cond)
+
+        # For name matching, use a {(colname, coltype): TableReference} dict
+        col_table = defaultdict(lambda: [])
+        for tbl, col in ((t, c) for t, cs in colit() for c in cs):
+            col_table[(col.name, col.datatype)].append(tbl)
+        # Integer columns have higher priority than others
+        prio = lambda datatype: 50 if datatype in('int4', 'int8') else 0
+        isfound = lambda alias1, alias2, col: {(alias1, col, alias2, col),
+          (alias2, col, alias1, col)} & found
+        # Get all columns that are in at least two tables
+        cols = ((c, ts) for c, ts in col_table.iteritems() if len(ts) > 1)
+        # Get all the column/table pairs for use on the left side
+        ltbls = ((col, dtype, t, ts) for (col, dtype), ts in cols for t in ts)
+        # Get the potential right-side partners
+        rtbls = ((col, dtype, ltbl, rtbl) for col, dtype, ltbl, tbls in ltbls
+          for rtbl in tbls if not col == '*' and ltbl.ref < rtbl.ref)
+        for col, dtype, ltbl, rtbl in rtbls:
+            cond = make_cond(ltbl.ref, rtbl.ref, col, col)
+            if cond and cond not in found:
+                conds.append((cond, 'name join', prio(dtype)))
+        conds, metas, prios = zip(*conds)
+        return self.find_matches(word_before_cursor, conds,
+          meta_collection=metas, type_priority=100, priority_collection=prios)
 
     def get_function_matches(self, suggestion, word_before_cursor):
         if suggestion.filter == 'is_set_returning':
@@ -419,6 +500,7 @@ class PGCompleter(Completer):
             word_before_cursor, NamedQueries.instance.list(), meta='named query')
 
     suggestion_matchers = {
+        JoinCondition: get_join_condition_matches,
         Column: get_column_matches,
         Function: get_function_matches,
         Schema: get_schema_matches,
@@ -436,76 +518,34 @@ class PGCompleter(Completer):
     def populate_scoped_cols(self, scoped_tbls):
         """ Find all columns in a set of scoped_tables
         :param scoped_tbls: list of TableReference namedtuples
-        :return: list of column names
+        :return: {TableReference:{colname:ColumnMetaData}}
         """
 
-        columns = []
+        columns = defaultdict(lambda: [])
         meta = self.dbmetadata
-
+        def addcols(schema, rel, alias, reltype, cols):
+            tbl = TableReference(schema, rel, alias, reltype == 'functions')
+            columns[tbl].extend(cols)
         for tbl in scoped_tbls:
-            if tbl.schema:
-                # A fully qualified schema.relname reference
-                schema = self.escape_name(tbl.schema)
+            schemas = [tbl.schema] if tbl.schema else self.search_path
+            for schema in schemas:
                 relname = self.escape_name(tbl.name)
-
+                schema = self.escape_name(schema)
                 if tbl.is_function:
-                    # Return column names from a set-returning function
-                    try:
-                        # Get an array of FunctionMetadata objects
-                        functions = meta['functions'][schema][relname]
-                    except KeyError:
-                        # No such function name
-                        continue
-
-                    for func in functions:
+                # Return column names from a set-returning function
+                # Get an array of FunctionMetadata objects
+                    functions = meta['functions'].get(schema, {}).get(relname)
+                    for func in (functions or []):
                         # func is a FunctionMetadata object
-                        columns.extend(func.fieldnames())
+                        cols = func.fields()
+                        addcols(schema, relname, tbl.alias, 'functions', cols)
                 else:
-                    # We don't know if schema.relname is a table or view. Since
-                    # tables and views cannot share the same name, we can check
-                    # one at a time
-                    try:
-                        columns.extend(meta['tables'][schema][relname])
-
-                        # Table exists, so don't bother checking for a view
-                        continue
-                    except KeyError:
-                        pass
-
-                    try:
-                        columns.extend(meta['views'][schema][relname])
-                    except KeyError:
-                        pass
-
-            else:
-                # Schema not specified, so traverse the search path looking for
-                # a table or view that matches. Note that in order to get proper
-                # shadowing behavior, we need to check both views and tables for
-                # each schema before checking the next schema
-                for schema in self.search_path:
-                    relname = self.escape_name(tbl.name)
-
-                    if tbl.is_function:
-                        try:
-                            functions = meta['functions'][schema][relname]
-                        except KeyError:
-                            continue
-
-                        for func in functions:
-                            # func is a FunctionMetadata object
-                            columns.extend(func.fieldnames())
-                    else:
-                        try:
-                            columns.extend(meta['tables'][schema][relname])
+                    for reltype in ('tables', 'views'):
+                        cols = meta[reltype].get(schema, {}).get(relname)
+                        if cols:
+                            cols = cols.itervalues()
+                            addcols(schema, relname, tbl.alias, reltype, cols)
                             break
-                        except KeyError:
-                            pass
-
-                        try:
-                            columns.extend(meta['views'][schema][relname])
-                            break
-                        except KeyError:
-                            pass
 
         return columns
 

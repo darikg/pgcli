@@ -32,7 +32,7 @@ def completer():
     tables, columns = [], []
     for table, cols in metadata['tables'].items():
         tables.append(('public', table))
-        columns.extend([('public', table, col) for col in cols])
+        columns.extend([('public', table, col, 'text') for col in cols])
 
     comp.extend_relations(tables, kind='tables')
     comp.extend_columns(columns, kind='tables')
@@ -41,7 +41,7 @@ def completer():
     views, columns = [], []
     for view, cols in metadata['views'].items():
         views.append(('public', view))
-        columns.extend([('public', view, col) for col in cols])
+        columns.extend([('public', view, col, 'text') for col in cols])
 
     comp.extend_relations(views, kind='views')
     comp.extend_columns(columns, kind='views')
@@ -312,6 +312,8 @@ def test_suggested_aliases_after_on(completer, complete_event):
         complete_event))
     assert set(result) == set([
         Completion(text='u', start_position=0, display_meta='table alias'),
+        Completion(text='o.id = u.id', start_position=0, display_meta='name join'),
+        Completion(text='o.email = u.email', start_position=0, display_meta='name join'),
         Completion(text='o', start_position=0, display_meta='table alias')])
 
 def test_suggested_aliases_after_on_right_side(completer, complete_event):
@@ -331,6 +333,8 @@ def test_suggested_tables_after_on(completer, complete_event):
         Document(text=text, cursor_position=position),
         complete_event))
     assert set(result) == set([
+        Completion(text='orders.id = users.id', start_position=0, display_meta='name join'),
+        Completion(text='orders.email = users.email', start_position=0, display_meta='name join'),
         Completion(text='users', start_position=0, display_meta='table alias'),
         Completion(text='orders', start_position=0, display_meta='table alias')])
 

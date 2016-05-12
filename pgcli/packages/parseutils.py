@@ -66,6 +66,7 @@ def last_word(text, include='alphanum_underscore'):
 
 TableReference = namedtuple('TableReference', ['schema', 'name', 'alias',
                                                'is_function'])
+TableReference.ref = property(lambda self: self.alias or self.name)
 
 
 # This code is borrowed from sqlparse example script.
@@ -138,22 +139,22 @@ def extract_table_identifiers(token_stream, allow_functions=True):
                     continue
                 if real_name:
                     yield TableReference(schema_name, real_name,
-                                         identifier.get_alias(), is_function)
+                        identifier.get_alias(), is_function)
         elif isinstance(item, Identifier):
             real_name = item.get_real_name()
             schema_name = item.get_parent_name()
             is_function = allow_functions and _identifier_is_function(item)
 
             if real_name:
-                yield TableReference(schema_name, real_name, item.get_alias(),
-                                     is_function)
+                yield TableReference(schema_name, real_name,
+                    item.get_alias(), is_function)
             else:
                 name = item.get_name()
-                yield TableReference(None, name, item.get_alias() or name,
+                yield TableReference(None, name, item.get_alias(),
                                      is_function)
         elif isinstance(item, Function):
-            yield TableReference(None, item.get_real_name(), item.get_alias(),
-                                 allow_functions)
+            yield TableReference(None, item.get_real_name(),
+                item.get_alias(), allow_functions)
 
 
 # extract_tables is inspired from examples in the sqlparse lib.
