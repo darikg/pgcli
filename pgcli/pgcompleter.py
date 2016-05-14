@@ -329,7 +329,7 @@ class PGCompleter(Completer):
         tables = suggestion.tables
         _logger.debug("Completion column scope: %r", tables)
         scoped_cols = []
-        for cols in self.populate_scoped_cols(tables).itervalues():
+        for cols in self.populate_scoped_cols(tables).values():
             scoped_cols.extend((c.name for c in cols))
         if suggestion.drop_unique:
             # drop_unique is used for 'tb11 JOIN tbl2 USING (...' which should
@@ -345,7 +345,7 @@ class PGCompleter(Completer):
         found = set()
         conds = []
 
-        colit = scoped_cols.iteritems
+        colit = scoped_cols.items
         if lefttable:
             def make_cond(tbl1, tbl2, col1, col2):
                 if tbl1 == lefttable:
@@ -360,8 +360,8 @@ class PGCompleter(Completer):
                     return tbl2 + '.' + col2 + ' = ' + tbl1 + '.' + col1
 
         # Map (schema, table, col) to TableReference
-        coldict = {(t.schema, t.name, c.name):t for t, cs in colit()
-            for c in cs}
+        coldict = dict((((t.schema, t.name, c.name), t) for t, cs in colit()
+            for c in cs))
         # For each fk from the available tables, check if the target table
         # is also in the list of available tables, and in that case,
         # add a corresponding join condition to conds.
@@ -382,10 +382,8 @@ class PGCompleter(Completer):
             col_table[(col.name, col.datatype)].append(tbl)
         # Integer columns have higher priority than others
         prio = lambda datatype: 50 if datatype in('int4', 'int8') else 0
-        isfound = lambda alias1, alias2, col: {(alias1, col, alias2, col),
-          (alias2, col, alias1, col)} & found
         # Get all columns that are in at least two tables
-        cols = ((c, ts) for c, ts in col_table.iteritems() if len(ts) > 1)
+        cols = ((c, ts) for c, ts in col_table.items() if len(ts) > 1)
         # Get all the column/table pairs for use on the left side
         ltbls = ((col, dtype, t, ts) for (col, dtype), ts in cols for t in ts)
         # Get the potential right-side partners
@@ -543,7 +541,7 @@ class PGCompleter(Completer):
                     for reltype in ('tables', 'views'):
                         cols = meta[reltype].get(schema, {}).get(relname)
                         if cols:
-                            cols = cols.itervalues()
+                            cols = cols.values()
                             addcols(schema, relname, tbl.alias, reltype, cols)
                             break
 
