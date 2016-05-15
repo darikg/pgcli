@@ -162,7 +162,7 @@ class PGCompleter(Completer):
         meta = self.dbmetadata['tables']
 
         for fk in fk_data:
-            e = self.escaped_names;
+            e = self.escaped_names
             parentschema, childschema = e([fk.parentschema, fk.childschema])
             parenttable, childtable = e([fk.parenttable, fk.childtable])
             for childcol, parcol in zip(fk.childcolumns, fk.parentcolumns):
