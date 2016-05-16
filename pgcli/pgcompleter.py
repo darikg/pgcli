@@ -17,6 +17,11 @@ from .packages.prioritization import PrevalenceCounter
 from .config import load_config, config_location
 
 try:
+    from collections import OrderedDict
+except ImportError:
+    from .packages.ordereddict import OrderedDict
+
+try:
     from collections import Counter
 except ImportError:
     # python 2.6
@@ -110,7 +115,8 @@ class PGCompleter(Completer):
         metadata = self.dbmetadata[kind]
         for schema, relname in data:
             try:
-                metadata[schema][relname] = {'*':ColumnMetadata('*', None, [])}
+                metadata[schema][relname] = OrderedDict(
+                    {'*':ColumnMetadata('*', None, [])})
             except KeyError:
                 _logger.error('%r %r listed in unrecognized schema %r',
                               kind, relname, schema)
