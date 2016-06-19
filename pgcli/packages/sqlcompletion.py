@@ -120,7 +120,7 @@ def suggest_type(full_text, text_before_cursor):
         if tok1 and tok1.value == '\\':
             return suggest_special(text_before_cursor_including_last_word)
 
-    last_token = statement and statement.token_prev(len(statement.tokens)) or ''
+    last_token = statement and statement.token_prev(len(statement.tokens))[1] or ''
 
     return suggest_based_on_last_token(
         last_token, text_before_cursor, full_text, identifier,
@@ -242,7 +242,7 @@ def suggest_based_on_last_token(token, text_before_cursor, full_text,
 
             # Check for a subquery expression (cases 3 & 4)
             where = p.tokens[-1]
-            prev_tok = where.token_prev(len(where.tokens) - 1)
+            prev_tok = where.token_prev(len(where.tokens) - 1)[1]
 
             if isinstance(prev_tok, Comparison):
                 # e.g. "SELECT foo FROM bar WHERE foo = ANY("
@@ -255,10 +255,10 @@ def suggest_based_on_last_token(token, text_before_cursor, full_text,
                 return column_suggestions
 
         # Get the token before the parens
-        prev_tok = p.token_prev(len(p.tokens) - 1)
+        prev_tok = p.token_prev(len(p.tokens) - 1)[1]
 
         if (prev_tok and prev_tok.value
-          and prev_tok.value.lower().split(' ')[-1] == 'using'):
+                and prev_tok.value.lower().split(' ')[-1] == 'using'):
             # tbl1 INNER JOIN tbl2 USING (col1, col2)
             tables = extract_tables(text_before_cursor)
 
@@ -413,7 +413,7 @@ def _allow_join_condition(statement):
     if not statement or not statement.tokens:
         return False
 
-    last_tok = statement.token_prev(len(statement.tokens))
+    last_tok = statement.token_prev(len(statement.tokens))[1]
     return last_tok.value.lower() in ('on', 'and', 'or')
 
 
@@ -432,6 +432,6 @@ def _allow_join(statement):
     if not statement or not statement.tokens:
         return False
 
-    last_tok = statement.token_prev(len(statement.tokens))
+    last_tok = statement.token_prev(len(statement.tokens))[1]
     return (last_tok.value.lower().endswith('join')
-        and last_tok.value.lower() not in('cross join', 'natural join'))
+            and last_tok.value.lower() not in('cross join', 'natural join'))
