@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 import pytest
 from prompt_toolkit.completion import Completion
 from prompt_toolkit.document import Document
-from pgcli.packages.function_metadata import FunctionMetadata, ForeignKey
+from pgcli.packages.parseutils.meta import FunctionMetadata, ForeignKey
 
 metadata = {
                 'tables': {

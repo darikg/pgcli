@@ -11,11 +11,13 @@ from prompt_toolkit.document import Document
 from .packages.sqlcompletion import (
     suggest_type, Special, Database, Schema, Table, Function, Column, View,
     Keyword, NamedQuery, Datatype, Alias, Path, JoinCondition, Join)
-from .packages.function_metadata import ColumnMetadata, ForeignKey
-from .packages.parseutils import last_word, TableReference
+from pgcli.packages.parseutils.meta import (
+    ColumnMetadata, ForeignKey, TableReference)
+from pgcli.packages.parseutils.util import last_word
 from .packages.pgliterals.main import get_literals
 from .packages.prioritization import PrevalenceCounter
 from .config import load_config, config_location, get_config
+
 
 try:
     from collections import OrderedDict
@@ -30,7 +32,8 @@ NamedQueries.instance = NamedQueries.from_config(
 
 Match = namedtuple('Match', ['completion', 'priority'])
 
-normalize_ref = lambda ref: ref if ref[0] == '"' else '"' + ref.lower() +  '"'
+normalize_ref = lambda ref: ref if ref[0] == '"' else '"' + ref.lower() + '"'
+
 
 class PGCompleter(Completer):
     keywords = get_literals('keywords')

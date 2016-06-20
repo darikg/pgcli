@@ -1,6 +1,14 @@
 from collections import namedtuple
 
+
+TableReference = namedtuple('TableReference', ['schema', 'name', 'alias',
+                                               'is_function'])
+TableReference.ref = property(lambda self: self.alias or (
+    self.name if self.name.islower() or self.name[0] == '"'
+    else '"' + self.name + '"'))
+
 ColumnMetadata = namedtuple('ColumnMetadata', ['name', 'datatype', 'foreignkeys'])
+
 ForeignKey = namedtuple('ForeignKey', ['parentschema', 'parenttable',
     'parentcolumn', 'childschema', 'childtable', 'childcolumn'])
 
@@ -8,7 +16,8 @@ ForeignKey = namedtuple('ForeignKey', ['parentschema', 'parenttable',
 class FunctionMetadata(object):
 
     def __init__(self, schema_name, func_name, arg_names, arg_types,
-        arg_modes, return_type, is_aggregate, is_window, is_set_returning):
+                 arg_modes, return_type, is_aggregate, is_window,
+                 is_set_returning):
         """Class for describing a postgresql function"""
 
         self.schema_name = schema_name
