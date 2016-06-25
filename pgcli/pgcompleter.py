@@ -340,7 +340,7 @@ class PGCompleter(Completer):
             # Map suggestion type to method
             # e.g. 'table' -> self.get_table_matches
             matcher = self.suggestion_matchers[suggestion_type]
-            matches.extend(matcher(self, suggestion, word_before_cursor))
+            matches.extend(matcher(self, suggestion, word_before_cursor, stmt))
 
         # Sort matches so highest priorities are first
         matches = sorted(matches, key=operator.attrgetter('priority'),
@@ -348,7 +348,9 @@ class PGCompleter(Completer):
 
         return [m.completion for m in matches]
 
-    def get_column_matches(self, suggestion, word_before_cursor):
+    def get_column_matches(self, suggestion, word_before_cursor, stmt):
+        del stmt  # unused argument
+
         tables = suggestion.tables
         _logger.debug("Completion column scope: %r", tables)
         scoped_cols = self.populate_scoped_cols(tables)
@@ -398,7 +400,9 @@ class PGCompleter(Completer):
             aliases = (self.case(tbl) + str(i) for i in itertools.count(2))
         return next(a for a in aliases if normalize_ref(a) not in tbls)
 
-    def get_join_matches(self, suggestion, word_before_cursor):
+    def get_join_matches(self, suggestion, word_before_cursor, stmt):
+        del stmt  # unused argument
+
         tbls = suggestion.tables
         cols = self.populate_scoped_cols(tbls)
         # Set up some data structures for efficient access
@@ -440,7 +444,9 @@ class PGCompleter(Completer):
         return self.find_matches(word_before_cursor, joins, meta='join',
             priority_collection=prios, type_priority=100)
 
-    def get_join_condition_matches(self, suggestion, word_before_cursor):
+    def get_join_condition_matches(self, suggestion, word_before_cursor, stmt):
+        del stmt  # unused argument
+
         col = namedtuple('col', 'schema tbl col')
         tbls = self.populate_scoped_cols(suggestion.tables).items
         cols = [(t, c) for t, cs in tbls() for c in cs]
@@ -495,7 +501,9 @@ class PGCompleter(Completer):
         return self.find_matches(word_before_cursor, conds,
           meta_collection=metas, type_priority=100, priority_collection=prios)
 
-    def get_function_matches(self, suggestion, word_before_cursor):
+    def get_function_matches(self, suggestion, word_before_cursor, stmt):
+        del stmt  # unused argument
+
         if suggestion.filter == 'for_from_clause':
             # Only suggest functions allowed in FROM clause
             filt = lambda f: not f.is_aggregate and not f.is_window
@@ -519,7 +527,9 @@ class PGCompleter(Completer):
 
         return funcs
 
-    def get_schema_matches(self, _, word_before_cursor):
+    def get_schema_matches(self, _, word_before_cursor, stmt):
+        del stmt  # unused argument
+
         schema_names = self.dbmetadata['tables'].keys()
 
         # Unless we're sure the user really wants them, hide schema names
@@ -529,7 +539,9 @@ class PGCompleter(Completer):
 
         return self.find_matches(word_before_cursor, schema_names, meta='schema')
 
-    def get_table_matches(self, suggestion, word_before_cursor):
+    def get_table_matches(self, suggestion, word_before_cursor, stmt):
+        del stmt  # unused argument
+
         tables = self.populate_schema_objects(suggestion.schema, 'tables')
 
         # Unless we're sure the user really wants them, don't suggest the
@@ -540,7 +552,9 @@ class PGCompleter(Completer):
 
         return self.find_matches(word_before_cursor, tables, meta='table')
 
-    def get_view_matches(self, suggestion, word_before_cursor):
+    def get_view_matches(self, suggestion, word_before_cursor, stmt):
+        del stmt  # unused argument
+
         views = self.populate_schema_objects(suggestion.schema, 'views')
 
         if not suggestion.schema and (
@@ -549,27 +563,36 @@ class PGCompleter(Completer):
 
         return self.find_matches(word_before_cursor, views, meta='view')
 
-    def get_alias_matches(self, suggestion, word_before_cursor):
+    def get_alias_matches(self, suggestion, word_before_cursor, stmt):
+        del stmt  # unused argument
+
         aliases = suggestion.aliases
         return self.find_matches(word_before_cursor, aliases,
                                  meta='table alias')
 
-    def get_database_matches(self, _, word_before_cursor):
+    def get_database_matches(self, suggestion, word_before_cursor, stmt):
+        del suggestion, stmt  # unused arguments
         return self.find_matches(word_before_cursor, self.databases,
                                  meta='database')
 
-    def get_keyword_matches(self, _, word_before_cursor):
+    def get_keyword_matches(self, suggestion, word_before_cursor, stmt):
+        del suggestion, stmt  # unused arguments
+
         return self.find_matches(word_before_cursor, self.keywords,
                                  mode='strict', meta='keyword')
 
-    def get_path_matches(self, _, word_before_cursor):
+    def get_path_matches(self, suggestion, word_before_cursor, stmt):
+        del suggestion, stmt  # unused arguments
+
         completer = PathCompleter(expanduser=True)
         document = Document(text=word_before_cursor,
                             cursor_position=len(word_before_cursor))
         for c in completer.get_completions(document, None):
             yield Match(completion=c, priority = None)
 
-    def get_special_matches(self, _, word_before_cursor):
+    def get_special_matches(self, suggestion, word_before_cursor, stmt):
+        del suggestion, stmt  # unused arguments
+
         if not self.pgspecial:
             return []
 
@@ -579,7 +602,9 @@ class PGCompleter(Completer):
         return self.find_matches(word_before_cursor, cmd_names, mode='strict',
                                  meta_collection=desc)
 
-    def get_datatype_matches(self, suggestion, word_before_cursor):
+    def get_datatype_matches(self, suggestion, word_before_cursor, stmt):
+        del stmt  # unused argument
+
         # suggest custom datatypes
         types = self.populate_schema_objects(suggestion.schema, 'datatypes')
         matches = self.find_matches(word_before_cursor, types, meta='datatype')
@@ -591,7 +616,9 @@ class PGCompleter(Completer):
 
         return matches
 
-    def get_namedquery_matches(self, _, word_before_cursor):
+    def get_namedquery_matches(self, suggestion, word_before_cursor, stmt):
+        del suggestion, stmt  # unused arguments
+
         return self.find_matches(
             word_before_cursor, NamedQueries.instance.list(), meta='named query')
 
