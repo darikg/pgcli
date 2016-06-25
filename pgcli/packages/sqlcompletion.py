@@ -77,7 +77,7 @@ class SqlStatement(object):
         self.text_before_cursor = text_before_cursor
         self.parsed = parsed
 
-        self.last_token = parsed and parsed.token_prev(len(parsed.tokens)) or ''
+        self.last_token = parsed and parsed.token_prev(len(parsed.tokens))[1] or ''
 
     def get_identifier_schema(self):
         schema = (self.identifier and self.identifier.get_parent_name()) or None
