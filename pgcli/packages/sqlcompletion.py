@@ -44,6 +44,9 @@ Path = namedtuple('Path', [])
 
 class SqlStatement(object):
     def __init__(self, full_text, text_before_cursor):
+        self.orig_full_text = full_text
+        self.orig_text_before_cursor = text_before_cursor
+
         self.identifier = None
         self.word_before_cursor = word_before_cursor = last_word(
             text_before_cursor, include='many_punctuations')
@@ -89,30 +92,26 @@ class SqlStatement(object):
             find_prev_keyword(self.text_before_cursor)
         return prev_keyword
 
+    def suggest_type(self):
+        """Suggest the type of the next token in the statement
 
-def suggest_type(full_text, text_before_cursor):
-    """Takes the full_text that is typed so far and also the text before the
-    cursor to suggest completion type and scope.
+        Returns a tuple of namedtuple suggestion types
+        """
 
-    Returns a tuple with a type of entity ('table', 'column' etc) and a scope.
-    A scope for a column category will be a list of tables.
-    """
+        # Don't expect paths to parse correctly
+        if self.orig_text_before_cursor.lstrip().startswith('\\i '):
+            return (Path(),)
 
-    if full_text.startswith('\\i '):
-        return (Path(),)
+        # Check for other special commands and handle those separately
+        if self.parsed:
+            # Be careful here because trivial whitespace is parsed as a
+            # statement, but the statement won't have a first token
+            tok1 = self.parsed.token_first()
+            if tok1 and tok1.value == '\\':
+                text = self.text_before_cursor + self.word_before_cursor
+                return suggest_special(text)
 
-    stmt = SqlStatement(full_text, text_before_cursor)
-
-    # Check for special commands and handle those separately
-    if stmt.parsed:
-        # Be careful here because trivial whitespace is parsed as a
-        # statement, but the statement won't have a first token
-        tok1 = stmt.parsed.token_first()
-        if tok1 and tok1.value == '\\':
-            text = stmt.text_before_cursor + stmt.word_before_cursor
-            return suggest_special(text)
-
-    return suggest_based_on_last_token(stmt.last_token, stmt)
+        return suggest_based_on_last_token(self.last_token, self)
 
 
 named_query_regex = re.compile(r'^\s*\\ns\s+[A-z0-9\-_]+\s+')

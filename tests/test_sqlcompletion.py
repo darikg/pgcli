@@ -1,7 +1,12 @@
 from pgcli.packages.sqlcompletion import (
-    suggest_type, Special, Database, Schema, Table, Column, View, Keyword,
+    SqlStatement, Special, Database, Schema, Table, Column, View, Keyword,
     Function, Datatype, Alias, JoinCondition, Join)
 import pytest
+
+
+def suggest_type(full_text, text_before_cursor):
+    stmt = SqlStatement(full_text, text_before_cursor)
+    return stmt.suggest_type()
 
 
 def test_select_suggests_cols_with_visible_table_scope():

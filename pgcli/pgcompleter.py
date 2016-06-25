@@ -9,7 +9,7 @@ from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.contrib.completers import PathCompleter
 from prompt_toolkit.document import Document
 from .packages.sqlcompletion import (
-    suggest_type, Special, Database, Schema, Table, Function, Column, View,
+    SqlStatement, Special, Database, Schema, Table, Function, Column, View,
     Keyword, NamedQuery, Datatype, Alias, Path, JoinCondition, Join)
 from .packages.function_metadata import ColumnMetadata, ForeignKey
 from .packages.parseutils import last_word, TableReference
@@ -329,7 +329,9 @@ class PGCompleter(Completer):
             return sorted(completions, key=operator.attrgetter('text'))
 
         matches = []
-        suggestions = suggest_type(document.text, document.text_before_cursor)
+
+        stmt = SqlStatement(document.text, document.text_before_cursor)
+        suggestions = stmt.suggest_type()
 
         for suggestion in suggestions:
             suggestion_type = type(suggestion)

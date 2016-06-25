@@ -1,6 +1,12 @@
 import pytest
 from pgcli.packages.sqlcompletion import (
-    suggest_type, Special, Database, Schema, Table, View, Function, Datatype)
+    SqlStatement, Special, Database, Schema, Table, View, Function, Datatype,
+    Path)
+
+
+def suggest_type(full_text, text_before_cursor):
+    stmt = SqlStatement(full_text, text_before_cursor)
+    return stmt.suggest_type()
 
 
 def test_slash_suggests_special():
