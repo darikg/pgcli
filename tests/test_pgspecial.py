@@ -92,6 +92,15 @@ def test_schema_qualified_dT_suggests_datatypes():
     assert suggestions == (Datatype(schema='foo'),)
 
 
+@pytest.mark.parametrize('text', [
+    '\\i ',
+    '\\i foo',
+])
+def test_slash_i_suggests_paths(text):
+    suggestions = suggest_type(text, text)
+    assert suggestions == (Path(),)
+
+
 @pytest.mark.parametrize('command', ['\\c ', '\\connect '])
 def test_c_suggests_databases(command):
     suggestions = suggest_type(command, command)
