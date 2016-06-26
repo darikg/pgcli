@@ -19,6 +19,8 @@ TableExpression = namedtuple('TableExpression',
 
 
 def isolate_query_ctes(full_text, text_before_cursor):
+    """Simplify a query by converting CTEs into table metadata objects
+    """
 
     meta = OrderedDict()
 
