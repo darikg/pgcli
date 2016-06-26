@@ -6,6 +6,7 @@ from collections import namedtuple
 from sqlparse.sql import Comparison, Identifier, Where
 from .parseutils import (
     last_word, extract_tables, find_prev_keyword, parse_partial_identifier)
+from parseutils_ctes import isolate_query_ctes
 from pgspecial.main import parse_special_command
 
 PY2 = sys.version_info[0] == 2
@@ -52,6 +53,10 @@ class SqlStatement(object):
             text_before_cursor, include='many_punctuations')
         full_text = _strip_named_query(full_text)
         text_before_cursor = _strip_named_query(text_before_cursor)
+
+        full_text, text_before_cursor, self.local_tables = \
+            isolate_query_ctes(full_text, text_before_cursor)
+
         self.text_before_cursor_including_last_word = text_before_cursor
 
         # If we've partially typed a word then word_before_cursor won't be an
