@@ -44,9 +44,10 @@ Path = namedtuple('Path', [])
 
 
 class SqlStatement(object):
-    def __init__(self, full_text, text_before_cursor):
+    def __init__(self, full_text, text_before_cursor, word_before_cursor):
         self.orig_full_text = full_text
         self.orig_text_before_cursor = text_before_cursor
+        self.word_before_cursor = word_before_cursor
 
         self.identifier = None
         self.word_before_cursor = word_before_cursor = last_word(
