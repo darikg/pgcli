@@ -4,7 +4,6 @@ from metadata import (MetaData, alias, name_join, fk_join, join, keyword,
     table, function, column, wildcard_expansion)
 from prompt_toolkit.document import Document
 from prompt_toolkit.completion import Completion
-from pgcli.packages.function_metadata import FunctionMetadata, ForeignKey
 
 metadata = {
     'tables': {
