@@ -3,6 +3,7 @@ import pytest
 from metadata import (MetaData, alias, name_join, fk_join, join, keyword,
     table, function, column, wildcard_expansion)
 from prompt_toolkit.document import Document
+from prompt_toolkit.completion import Completion
 from pgcli.packages.function_metadata import FunctionMetadata, ForeignKey
 
 metadata = {
@@ -681,3 +682,34 @@ def test_suggest_columns_from_quoted_table(completer, complete_event):
     result = completer.get_completions(Document(text=text, cursor_position=pos),
                                        complete_event)
     assert set(result) == set(testdata.columns('Users'))
+
+
+def test_suggest_columns_from_cte(completer, complete_event):
+    text = 'WITH cte AS (SELECT foo, bar FROM baz) SELECT  FROM cte'
+    pos = len('WITH cte AS (SELECT foo, bar FROM baz) SELECT ')
+    result = completer.get_completions(Document(text=text, cursor_position=pos),
+                                       complete_event)
+    expected = set([
+        Completion('foo', 0, display_meta='column'),
+        Completion('bar', 0, display_meta='column'),
+    ])
+
+    assert expected <= set(result)
+
+
+def test_suggest_cte_names(completer, complete_event):
+    text = '''
+        WITH cte1 AS (SELECT a, b, c FROM foo),
+             cte2 AS (SELECT d, e, f FROM bar),
+        SELECT * FROM
+    '''
+    pos = len(text)
+    result = completer.get_completions(
+        Document(text=text, cursor_position=pos),
+        complete_event)
+    expected = set([
+        Completion('cte1', 0, display_meta='table'),
+        Completion('cte2', 0, display_meta='table'),
+    ])
+    assert expected <= set(result)
+
