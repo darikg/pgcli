@@ -683,19 +683,6 @@ def test_suggest_columns_from_quoted_table(completer, complete_event):
     assert set(result) == set(testdata.columns('Users'))
 
 
-def test_suggest_columns_from_cte(completer, complete_event):
-    text = 'WITH cte AS (SELECT foo, bar FROM baz) SELECT  FROM cte'
-    pos = len('WITH cte AS (SELECT foo, bar FROM baz) SELECT ')
-    result = completer.get_completions(Document(text=text, cursor_position=pos),
-                                       complete_event)
-    expected = set([
-        Completion('foo', 0, display_meta='column'),
-        Completion('bar', 0, display_meta='column'),
-    ])
-
-    assert expected <= set(result)
-
-
 def test_suggest_cte_names(completer, complete_event):
     text = '''
         WITH cte1 AS (SELECT a, b, c FROM foo),
@@ -712,3 +699,54 @@ def test_suggest_cte_names(completer, complete_event):
     ])
     assert expected <= set(result)
 
+
+def test_suggest_columns_from_cte(completer, complete_event):
+    text = 'WITH cte AS (SELECT foo, bar FROM baz) SELECT  FROM cte'
+    pos = len('WITH cte AS (SELECT foo, bar FROM baz) SELECT ')
+    result = completer.get_completions(Document(text=text, cursor_position=pos),
+                                       complete_event)
+    expected = ([Completion('foo', 0, display_meta='column'),
+                 Completion('bar', 0, display_meta='column'),
+                 ] +
+                testdata.functions() +
+                testdata.builtin_functions() +
+                testdata.keywords()
+                )
+
+    assert set(expected) == set(result)
+
+
+@pytest.mark.parametrize('text', [
+    'WITH cte AS (SELECT foo FROM bar) SELECT * FROM cte WHERE cte.',
+    'WITH cte AS (SELECT foo FROM bar) SELECT * FROM cte c WHERE c.',
+])
+def test_cte_qualified_columns(completer, complete_event, text):
+    pos = len(text)
+    result = completer.get_completions(
+        Document(text=text, cursor_position=pos),
+        complete_event)
+    expected = [Completion('foo', 0, display_meta='column')]
+    assert set(expected) == set(result)
+
+
+def test_join_condition_with_cte(completer, complete_event):
+    text = '''  WITH cte AS (SELECT id, first_name FROM users)
+                SELECT * FROM users u INNER join cte c ON '''
+    pos = len(text)
+    result = completer.get_completions(
+        Document(text=text, cursor_position=pos),
+        complete_event)
+    expected = [Completion('foo', 0, display_meta='column')]
+    assert set(expected) == set(result)
+
+
+def test_join_with_ctes(completer, complete_event):
+    text = '''  WITH first_names AS (SELECT id, first_name FROM users),
+                     last_names  AS (SELECT id, last_name FROM users)
+                SELECT * FROM first_names f INNER JOIN '''
+    pos = len(text)
+    result = completer.get_completions(
+        Document(text=text, cursor_position=pos),
+        complete_event)
+    expected = [Completion('foo', 0, display_meta='column')]
+    assert set(expected) == set(result)

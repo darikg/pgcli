@@ -353,7 +353,7 @@ class PGCompleter(Completer):
         tables = suggestion.tables
         word_before_cursor = stmt.word_before_cursor
         _logger.debug("Completion column scope: %r", tables)
-        scoped_cols = self.populate_scoped_cols(tables)
+        scoped_cols = self.populate_scoped_cols(tables, stmt.local_tables)
         colit = scoped_cols.items
         flat_cols = list(itertools.chain(*((c.name for c in cols)
             for t, cols in colit())))
@@ -402,7 +402,8 @@ class PGCompleter(Completer):
 
     def get_join_matches(self, suggestion, stmt):
         tbls = suggestion.tables
-        cols = self.populate_scoped_cols(tbls)
+        cols = self.populate_scoped_cols(tbls, stmt.local_tables)
+
         # Set up some data structures for efficient access
         qualified = dict((normalize_ref(t.ref), t.schema) for t in tbls)
         ref_prio = dict((normalize_ref(t.ref), n) for n, t in enumerate(tbls))
@@ -410,6 +411,7 @@ class PGCompleter(Completer):
         other_tbls = set((t.schema, t.name)
             for t in list(cols)[:-1])
         joins, prios = [], []
+
         # Iterate over FKs in existing tables to find potential joins
         fks = ((fk, rtbl, rcol) for rtbl, rcols in cols.items()
             for rcol in rcols for fk in rcol.foreignkeys)
@@ -544,13 +546,17 @@ class PGCompleter(Completer):
                                  meta='schema')
 
     def get_table_matches(self, suggestion, stmt):
-        tables = self.populate_schema_objects(suggestion.schema, 'tables')
+        tables = self.populate_schema_objects(
+            suggestion.schema, 'tables')
 
-        # Unless we're sure the user really wants them, don't suggest the
-        # pg_catalog tables that are implicitly on the search path
-        if not suggestion.schema and (
-                not stmt.word_before_cursor.startswith('pg_')):
-            tables = [t for t in tables if not t.startswith('pg_')]
+        if not suggestion.schema:
+            # Unless we're sure the user really wants them, don't suggest the
+            # pg_catalog tables that are implicitly on the search path
+            if not stmt.word_before_cursor.startswith('pg_'):
+                tables = [t for t in tables if not t.startswith('pg_')]
+
+            # Put the names of any local tables in front
+            tables = stmt.local_tables.keys() + tables
 
         return self.find_matches(stmt.word_before_cursor, tables, meta='table')
 
@@ -643,13 +649,19 @@ class PGCompleter(Completer):
             columns[tbl].extend(cols)
 
         for tbl in scoped_tbls:
+            if not tbl.schema and tbl.name in local_tbls:
+                # Local query defined tables should shadow database tables
+                cols = local_tbls[tbl.name]
+                addcols(None, tbl.name, tbl.alias, 'tables', cols)
+                continue
+
             schemas = [tbl.schema] if tbl.schema else self.search_path
             for schema in schemas:
                 relname = self.escape_name(tbl.name)
                 schema = self.escape_name(schema)
                 if tbl.is_function:
-                # Return column names from a set-returning function
-                # Get an array of FunctionMetadata objects
+                    # Return column names from a set-returning function
+                    # Get an array of FunctionMetadata objects
                     functions = meta['functions'].get(schema, {}).get(relname)
                     for func in (functions or []):
                         # func is a FunctionMetadata object
@@ -662,10 +674,6 @@ class PGCompleter(Completer):
                             cols = cols.values()
                             addcols(schema, relname, tbl.alias, reltype, cols)
                             break
-
-        # Local query defined tables should shadow database tables
-        for tbl, cols in local_tbls.items():
-            columns[tbl] = cols
 
         return columns
 
