@@ -506,6 +506,7 @@ class PGCli(object):
                 ignore_case=True,
                 editing_mode=editing_mode)
 
+            buf.paste_mode = application.paste_mode
             cli = CommandLineInterface(application=application,
                                        eventloop=self.eventloop)
 
