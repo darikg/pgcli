@@ -37,7 +37,7 @@ def step_wait_prompt(context):
     """
     Make sure prompt is displayed.
     """
-    _expect_exact(context, '{0}> '.format(context.conf['dbname']), timeout=5)
+    _expect_exact(context, str('{0}> ').format(context.conf['dbname']), timeout=5)
 
 
 @when('we send "ctrl + d"')
