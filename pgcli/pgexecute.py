@@ -17,14 +17,14 @@ _logger = logging.getLogger(__name__)
 # See http://initd.org/psycopg/docs/usage.html#unicode-handling for more info.
 ext.register_type(ext.UNICODE)
 ext.register_type(ext.UNICODEARRAY)
-ext.register_type(ext.new_type((705,), "UNKNOWN", ext.UNICODE))
+ext.register_type(ext.new_type((705,), str("UNKNOWN"), ext.UNICODE))
 # See https://github.com/dbcli/pgcli/issues/426 for more details.
 # This registers a unicode type caster for datatype 'RECORD'.
-ext.register_type(ext.new_type((2249,), "RECORD", ext.UNICODE))
+ext.register_type(ext.new_type((2249,), str("RECORD"), ext.UNICODE))
 
 # Cast bytea fields to text. By default, this will render as hex strings with
 # Postgres 9+ and as escaped binary in earlier versions.
-ext.register_type(ext.new_type((17,), 'BYTEA_TEXT', psycopg2.STRING))
+ext.register_type(ext.new_type((17,), str('BYTEA_TEXT'), psycopg2.STRING))
 
 # When running a query, make pressing CTRL+C raise a KeyboardInterrupt
 # See http://initd.org/psycopg/articles/2014/07/20/cancelling-postgresql-statements-python/
