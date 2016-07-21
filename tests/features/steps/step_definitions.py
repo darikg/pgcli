@@ -300,3 +300,4 @@ def _expect_exact(context, expected, timeout):
         raise Exception('Expected:\n---\n{0}\n---\n\nActual:\n---\n{1}\n---'.format(
             expected,
             actual))
+
