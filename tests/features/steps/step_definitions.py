@@ -62,7 +62,7 @@ def step_db_create(context):
     """
     Send create database.
     """
-    context.cli.sendline('create database {0};'.format(
+    context.cli.sendline(str('create database {0};').format(
         context.conf['dbname_tmp']))
 
     context.response = {
@@ -75,7 +75,7 @@ def step_db_drop(context):
     """
     Send drop database.
     """
-    context.cli.sendline('drop database {0};'.format(
+    context.cli.sendline(str('drop database {0};').format(
         context.conf['dbname_tmp']))
 
 
