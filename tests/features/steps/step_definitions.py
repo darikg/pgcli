@@ -133,7 +133,7 @@ def step_db_connect_test(context):
     Send connect to database.
     """
     db_name = context.conf['dbname']
-    context.cli.sendline('\\connect {0}'.format(db_name))
+    context.cli.sendline(str('\\connect {0}').format(db_name))
 
 
 @when('we start external editor providing a file name')
@@ -144,7 +144,7 @@ def step_edit_file(context):
     context.editor_file_name = 'test_file_{0}.sql'.format(context.conf['vi'])
     if os.path.exists(context.editor_file_name):
         os.remove(context.editor_file_name)
-    context.cli.sendline('\e {0}'.format(context.editor_file_name))
+    context.cli.sendline(str('\e {0}').format(context.editor_file_name))
     _expect_exact(context, 'nano', timeout=2)
 
 
@@ -201,7 +201,7 @@ def step_see_prompt(context):
     """
     Wait to see the prompt.
     """
-    _expect_exact(context, '{0}> '.format(context.conf['dbname']), timeout=5)
+    _expect_exact(context, str('{0}> ').format(context.conf['dbname']), timeout=5)
 
 
 @then('we see help output')
