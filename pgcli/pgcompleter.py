@@ -367,6 +367,11 @@ class PGCompleter(Completer):
         tables = suggestion.table_refs
         _logger.debug("Completion column scope: %r", tables)
         scoped_cols = self.populate_scoped_cols(tables)
+
+        # Local tables should shadow database tables
+        for tbl in suggestion.local_tables:
+            scoped_cols[tbl.name] = tbl.columns
+
         colit = scoped_cols.items
         flat_cols = list(chain(*((c.name for c in cols)
             for t, cols in colit())))
@@ -567,6 +572,7 @@ class PGCompleter(Completer):
 
     def get_table_matches(self, suggestion, word_before_cursor, alias=False):
         tables = self.populate_schema_objects(suggestion.schema, 'tables')
+        tables.extend(tbl.name for tbl in suggestion.local_tables)
 
         # Unless we're sure the user really wants them, don't suggest the
         # pg_catalog tables that are implicitly on the search path
