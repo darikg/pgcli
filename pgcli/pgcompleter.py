@@ -366,11 +366,7 @@ class PGCompleter(Completer):
     def get_column_matches(self, suggestion, word_before_cursor):
         tables = suggestion.table_refs
         _logger.debug("Completion column scope: %r", tables)
-        scoped_cols = self.populate_scoped_cols(tables)
-
-        # Local tables should shadow database tables
-        for tbl in suggestion.local_tables:
-            scoped_cols[tbl.name] = tbl.columns
+        scoped_cols = self.populate_scoped_cols(tables, suggestion.local_tables)
 
         colit = scoped_cols.items
         flat_cols = list(chain(*((c.name for c in cols)
@@ -660,7 +656,7 @@ class PGCompleter(Completer):
         Path: get_path_matches,
     }
 
-    def populate_scoped_cols(self, scoped_tbls):
+    def populate_scoped_cols(self, scoped_tbls, local_tbls=None):
         """ Find all columns in a set of scoped_tables
         :param scoped_tbls: list of TableReference namedtuples
         :return: {TableReference:{colname:ColumnMetaData}}
@@ -695,6 +691,10 @@ class PGCompleter(Completer):
                             cols = cols.values()
                             addcols(schema, relname, tbl.alias, reltype, cols)
                             break
+                            
+        # Local tables should shadow database tables
+        for tbl in local_tbls:
+            local_tbls[tbl.name] = tbl.columns
 
         return columns
 
