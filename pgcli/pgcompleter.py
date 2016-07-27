@@ -3,7 +3,7 @@ import logging
 import re
 from itertools import count, repeat, chain
 import operator
-from collections import namedtuple, defaultdict
+from collections import namedtuple
 from pgspecial.namedqueries import NamedQueries
 from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.contrib.completers import PathCompleter
@@ -463,13 +463,14 @@ class PGCompleter(Completer):
             priority_collection=prios, type_priority=100)
 
     def get_join_condition_matches(self, suggestion, word_before_cursor):
-        col = namedtuple('col', 'schema tbl col')
-        tbls = self.populate_scoped_cols(suggestion.table_refs).items
-        cols = [(t, c) for t, cs in tbls() for c in cs]
+        tbls = self.populate_scoped_cols(
+            suggestion.table_refs, suggestion.local_tables)
+
+        cols = [(t, c) for t, cs in tbls.items() for c in cs]
         try:
             lref = (suggestion.parent or suggestion.table_refs[-1]).ref
-            ltbl, lcols = [(t, cs) for (t, cs) in tbls() if t.ref == lref][-1]
-        except IndexError: # The user typed an incorrect table qualifier
+            ltbl, lcols = [(t, cs) for (t, cs) in tbls.items() if t.ref == lref][-1]
+        except IndexError:  # The user typed an incorrect table qualifier
             return []
         conds, found_conds = [], set()
 
@@ -481,12 +482,6 @@ class PGCompleter(Completer):
                 found_conds.add(cond)
                 conds.append((cond, meta, prio + ref_prio[rref]))
 
-        def list_dict(pairs): # Turns [(a, b), (a, c)] into {a: [b, c]}
-            d = defaultdict(list)
-            for pair in pairs:
-                d[pair[0]].append(pair[1])
-            return d
-
         # Tables that are closer to the cursor get higher prio
         ref_prio = dict((tbl.ref, num) for num, tbl
             in enumerate(suggestion.table_refs))
@@ -496,21 +491,30 @@ class PGCompleter(Completer):
         # For each fk from the left table, generate a join condition if
         # the other table is also in the scope
         fks = ((fk, lcol.name) for lcol in lcols for fk in lcol.foreignkeys)
-        for fk, lcol in fks:
+        for fk, lcol_name in iter_fk_join_conditions(lcols):
             left = col(ltbl.schema, ltbl.name, lcol)
             child = col(fk.childschema, fk.childtable, fk.childcolumn)
             par = col(fk.parentschema, fk.parenttable, fk.parentcolumn)
             left, right = (child, par) if left == child else (par, child)
             for rtbl in coldict[right]:
                 add_cond(left.col, right.col, rtbl.ref, 'fk join', 2000)
-        # For name matching, use a {(colname, coltype): TableReference} dict
-        coltyp = namedtuple('coltyp', 'name datatype')
-        col_table = list_dict((coltyp(c.name, c.datatype), t) for t, c in cols)
+
         # Find all name-match join conditions
-        for c in (coltyp(c.name, c.datatype) for c in lcols):
-            for rtbl in (t for t in col_table[c] if t.ref != ltbl.ref):
-                add_cond(c.name, c.name, rtbl.ref, 'name join', 1000
-                    if c.datatype in ('integer', 'bigint', 'smallint') else 0)
+        int_types = set(('integer', 'bigint', 'smallint'))
+        for lcol in lcols:
+            for rtbl, rcols in tbls:
+                if rtbl.ref == ltbl.ref:
+                    continue
+                for rcol in rtbl.columns:
+                    if lcol.name == rcol.name:
+                        # Column names match. Ideally we'd only suggest a join
+                        # if the datatypes also match, but also want to support
+                        # CTEs and subqueries where column datatypes are unknown
+                        types = set((lcol.datatype, rcol.datatype))
+                        if len(types) == 1 or None in types:
+                            prio = 1000 if (types & int_types) else 0
+                            add_cond(lcol.name, rcol.name, rtbl.ref,
+                                     'name join', prio)
 
         conds, metas, prios = zip(*conds) if conds else ([], [], [])
 
@@ -691,7 +695,7 @@ class PGCompleter(Completer):
                             cols = cols.values()
                             addcols(schema, relname, tbl.alias, reltype, cols)
                             break
-                            
+
         # Local tables should shadow database tables
         for tbl in local_tbls:
             local_tbls[tbl.name] = tbl.columns
