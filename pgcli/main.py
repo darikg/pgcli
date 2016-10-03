@@ -49,6 +49,9 @@ from .key_bindings import pgcli_bindings
 from .encodingutils import utf8tounicode
 from .__init__ import __version__
 
+import sys
+_SUPPORT_COMMA_FORMATTING = sys.version_info >= (2, 7)
+
 click.disable_unicode_literals_warning = True
 
 try:
@@ -137,8 +140,15 @@ class PGCli(object):
         self.null_string = c['main'].get('null_string', '<null>')
         self.prompt_format = c['main'].get('prompt', self.default_prompt)
         self.on_error = c['main']['on_error'].upper()
-        self.decimal_format = c['data_formats']['decimal']
-        self.float_format = c['data_formats']['float']
+
+        decimal_format = c['data_formats']['decimal']
+        float_format = c['data_formats']['float']
+        if not _SUPPORT_COMMA_FORMATTING:
+            decimal_format = decimal_format.replace(',', '')
+            float_format = float_format.replace(',', '')
+
+        self.decimal_format = decimal_format
+        self.float_format = float_format
         self.completion_refresher = CompletionRefresher()
 
         self.query_history = []
