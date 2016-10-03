@@ -133,4 +133,4 @@ Token.Toolbar.Arg.Text = 'nobold'
 # for float "g" - 123456.78, ",g" - 123,456.78
 [data_formats]
 decimal = ",d"
-float = ",g"
+float = ',.3f'
