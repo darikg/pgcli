@@ -793,8 +793,9 @@ def obfuscate_process_password():
     setproctitle.setproctitle(process_title)
 
 
-def format_output(title, cur, headers, status, table_format, dcmlfmt, floatfmt,
-                  missingval='<null>', expanded=False, max_width=None):
+def format_output(title, cur, headers, status, table_format, dcmlfmt='d',
+                  floatfmt='.3', missingval='<null>', expanded=False,
+                  max_width=None):
     output = []
     if title:  # Only print the title if it's not None.
         output.append(title)
