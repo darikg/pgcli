@@ -19,39 +19,7 @@ else:
     string_types = basestring
 
 
-Special = namedtuple('Special', [])
-Database = namedtuple('Database', [])
-Schema = namedtuple('Schema', [])
-# FromClauseItem is a table/view/function used in the FROM clause
-# `table_refs` contains the list of tables/... already in the statement,
-# used to ensure that the alias we suggest is unique
-FromClauseItem = namedtuple('FromClauseItem', 'schema table_refs local_tables')
-Table = namedtuple('Table', ['schema', 'table_refs', 'local_tables'])
-View = namedtuple('View', ['schema', 'table_refs'])
-# JoinConditions are suggested after ON, e.g. 'foo.barid = bar.barid'
-JoinCondition = namedtuple('JoinCondition', ['table_refs', 'parent'])
-# Joins are suggested after JOIN, e.g. 'foo ON foo.barid = bar.barid'
-Join = namedtuple('Join', ['table_refs', 'schema'])
-
-Function = namedtuple('Function', ['schema', 'table_refs', 'filter'])
-# For convenience, don't require the `filter` argument in Function constructor
-Function.__new__.__defaults__ = (None, tuple(), None)
-Table.__new__.__defaults__ = (None, tuple(), tuple())
-View.__new__.__defaults__ = (None, tuple())
-FromClauseItem.__new__.__defaults__ = (None, tuple(), tuple())
-
-Column = namedtuple(
-    'Column',
-    ['table_refs', 'require_last_table', 'local_tables', 'qualifiable']
-)
-Column.__new__.__defaults__ = (None, None, tuple(), False)
-
-Keyword = namedtuple('Keyword', [])
-NamedQuery = namedtuple('NamedQuery', [])
-Datatype = namedtuple('Datatype', ['schema'])
-Alias = namedtuple('Alias', ['aliases'])
-
-Path = namedtuple('Path', [])
+from .suggestions import *
 
 
 class SqlStatement(object):
